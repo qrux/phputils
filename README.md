@@ -10,10 +10,17 @@ The PHP portion of the project should include the inc/utils.php file:
 
 The JS portion should include--AFTER jquery--the js/utils.js file:
 
-	&lt;script type="text/javascript" src="js/utils.js"&gt;&lt;/script&gt;
+	<script type="text/javascript" src="js/utils.js"></script>
 
-API calls should be defined in api/&lt;version&gt;/index.php, as a static function in the
-class 'AjaxCalls'.
+API calls should be defined in
+
+	api/<version>/index.php
+
+as a static function in the class 'AjaxCalls'.
+
+Run JS body like this:
 
     $(document).ready(function () {
     }
+
+(you already know this; I'm always forgetting).
