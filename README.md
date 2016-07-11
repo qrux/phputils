@@ -8,7 +8,7 @@ The PHP portion of the project should include the inc/utils.php file:
 
 	require_once("inc/utils.php");
 
-The JS portion should include--AFTER jquery--the js/utils.js file:
+The JS portion should include *AFTER jquery* the js/utils.js file:
 
 	<script type="text/javascript" src="js/utils.js"></script>
 
