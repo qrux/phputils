@@ -55,7 +55,7 @@ $isntSecure            = !$isHTTPS;
 $shouldBeSecureButIsnt = $isProd && $isntSecure;
 
 /*
- * Comment thout the following should-be-secure-but-isn't block
+ * Comment out the following should-be-secure-but-isn't block
  * to disable HTTPS check (maybe b/c Android clients are being retarded).
  */
 if ( $shouldBeSecureButIsnt )

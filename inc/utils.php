@@ -704,17 +704,20 @@ class FJ
             return;
         }
 
-        $libsdirArray = explode(PATH_SEPARATOR, LIB_DIRS);
-        foreach ( $libsdirArray as $libdir )
-        {
-            $dir   = $start . DIRECTORY_SEPARATOR . $libdir;
-            $path2 = $dir . DIRECTORY_SEPARATOR . $subpath;
+		if ( defined("LIB_DIRS") )
+		{
+			$libsdirArray = explode(PATH_SEPARATOR, LIB_DIRS);
+			foreach ( $libsdirArray as $libdir )
+			{
+				$dir   = $start . DIRECTORY_SEPARATOR . $libdir;
+				$path2 = $dir . DIRECTORY_SEPARATOR . $subpath;
 
-            if ( is_file($path2) )
-            {
-                require_once($path2);
-                return;
-            }
+				if ( is_file($path2) )
+				{
+					require_once($path2);
+					return;
+				}
+			}
         }
 
         clog("Cannot find class [ $className ] in [ $path:$path2 ]; giving up");
@@ -725,7 +728,7 @@ class FJ
     {
         $json = json_encode($obj);
 
-        self::detectJSONError($obj, $json, true);
+        if ( JSON_DETECT_ERRORS ) self::detectJSONError($obj, $json, true);
 
         return $json;
     }
@@ -735,7 +738,7 @@ class FJ
     {
         $string = json_decode($json, $useAssoc);
 
-        self::detectJSONError($json, $string, false);
+        if ( JSON_DETECT_ERRORS ) self::detectJSONError($json, $string, false);
 
         return $string;
     }
@@ -807,10 +810,14 @@ else
 
 // Include basics (like constants, etc).
 set_include_path(get_include_path() . PATH_SEPARATOR . __DIR__);
-$libsdirArray = explode(PATH_SEPARATOR, LIB_DIRS);
-foreach ( $libsdirArray as $libdir )
+
+if ( defined("LIB_DIRS") )
 {
-    set_include_path(get_include_path() . PATH_SEPARATOR . __DIR__ . "/$libdir");
+	$libsdirArray = explode(PATH_SEPARATOR, LIB_DIRS);
+	foreach ( $libsdirArray as $libdir )
+	{
+		set_include_path(get_include_path() . PATH_SEPARATOR . __DIR__ . "/$libdir");
+	}
 }
 
 require_once("constants.php");

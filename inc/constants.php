@@ -20,6 +20,9 @@ define("DOT", ".");
 define("UNDERSCORE", "_");
 define("TILDE", "~");
 
+// JSON error-detection options.
+define("JSON_DETECT_ERROR", false);
+
 // Time debugging options.
 define("DEBUG_ANALTIME", false);
 define("DEBUG_RFC3339", false);
@@ -110,4 +113,3 @@ define("RELEASE_TYPE_BETA", 9);
 // ****************************************************************
 
 define("RELEASE_TYPE_ACTUAL", RELEASE_TYPE_DEV);
-define("FS_DEFAULT_ROOT_ACTUAL", FS_DEFAULT_ROOT_PROD);
