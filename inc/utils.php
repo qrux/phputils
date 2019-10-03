@@ -89,24 +89,24 @@ class FJ
     const CLOG_FILENAME = "php.clog";
     const CLOG_TIMING_THRESHOLD = 50; // millis before we mark it red.
     const CLOG_DEBUG_TIMING = false;
+    const CLOG_DEBUG_ERROR_LOG_DEFAULT = false;
     const CLOG_FOPEN_MODE = "a+";
+
+    const CLOG_ALT_FILE_DIRS = [
+        "/srv/www/logs",
+        "/var/log/apache2",
+        "/var/log/apache",
+        "/var/log/httpd",
+    ];
 
 
     private static $logfp = false;
 
 
     private static function initClogAlternateFiles() {
-        // Look through these dirs, try to create files.
-        $array = [
-            "/srv/www/logs",
-            "/var/log/apache2",
-            "/var/log/apache",
-            "/var/log/httpd",
-            ];
-
         self::$logfp = false;
 
-        foreach ( $array as $dir ) {
+        foreach ( self::CLOG_ALT_FILE_DIRS as $dir ) {
             $path = $dir . DIRECTORY_SEPARATOR . self::CLOG_FILENAME;
             $fp = @fopen($path, self::CLOG_FOPEN_MODE);
             if ( false !== $fp ) {
@@ -137,7 +137,7 @@ class FJ
             $logdir = pathinfo(realpath("/proc/".getmypid()."/fd/2"), PATHINFO_DIRNAME);
 
             if ( !$logdir || 0 == strlen($logdir) ) {
-                self::initClogAlternateFiles();
+                if ( !self::CLOG_DEBUG_ERROR_LOG_DEFAULT ) self::initClogAlternateFiles();
                 return;
             } else {
                 $clogFilePath = $logdir . DIRECTORY_SEPARATOR . self::CLOG_FILENAME;
