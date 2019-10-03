@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2012 Troy Wu
+ * Copyright (c) 2012-2019 Troy Wu
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,6 +26,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+
+namespace FJ;
+
+
 function readSinglePasswordFromCLI ( $mesg )
 {
     do
@@ -37,8 +41,7 @@ function readSinglePasswordFromCLI ( $mesg )
         system('stty echo');
         // add a new line since the users CR didn't echo
         echo "\n";
-    }
-    while ( 0 == strlen($passwd) );
+    } while ( 0 == strlen($passwd) );
 
     return $passwd;
 }
@@ -58,18 +61,18 @@ function readPasswordFromCLI ( $mesg )
         {
             clog("  Sorry, both those passwords didn't match.  Try again, please.");
         }
-    }
-    while ( !$match );
+    } while ( !$match );
 
     return $p1;
 }
 
 
-function _FJ_CLI_ENTRY_POINT ( $argc, $argv )
+/*
+function _cli ( $argc, $argv )
 {
     // NOTE - How to properly detect command line?
     // NOTE - This looks like a trick to use PHP.ini, and setting the value of highlight.bg...
-    /*
+
     $allVars = ini_get_all();
     $var     = 'highlight.bg';
     $val     = '#gggggg';
@@ -83,14 +86,8 @@ function _FJ_CLI_ENTRY_POINT ( $argc, $argv )
         }
         main($argc, $argv);
     }
-    */
 
-    exit(  isCLI() && main($argc, $argv)  );
+    if ( isCLI() )
+        exit(main($argc, $argv));
 }
-
-define("SHOULD_CLOG_OUTPUT_REMOTE_ADDR_INFO", false);
-
-clog("About to CLI...");
-
-_FJ_CLI_ENTRY_POINT($argc, $argv);
-// This enters the CLI script, which must be a shebang'ed PHP script with a main($argc,$agv) function defined.
+*/

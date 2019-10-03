@@ -26,6 +26,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+
+namespace FJ;
+
+
 /**
  * ************************************************************************
  * Reads any-old-timespec.  If it's parseable at all, we will

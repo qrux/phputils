@@ -25,7 +25,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-require_once(__DIR__ . "/../../inc/utils.php");
+
+require_once(__DIR__ . "/../../inc/FJ/autoloader.php");
+
 
 // NOTE - We're not using this, because each connection will be separately managed.
 //session_start();

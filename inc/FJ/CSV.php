@@ -27,6 +27,9 @@
  */
 
 
+namespace FJ;
+
+
 class CSV
 {
     const CSV_DELIM_DEFAULT = ",";

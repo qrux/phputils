@@ -31,8 +31,20 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-require_once(__DIR__ . "/../../inc/utils.php");
 
+require_once(__DIR__ . "/../../inc/FJ/autoloader.php");
+
+
+use function \FJ\clog;
+use \FJ\FJ;
+
+
+/**
+ * @param $argc
+ * @param $argv
+ *
+ * @return int
+ */
 function main ( $argc, $argv )
 {
     // Test using NIST test vectors.
@@ -42,20 +54,20 @@ function main ( $argc, $argv )
     $plainHex3 = "30c81c46a35ce411e5fbc1191a0a52ef";
     $plainHex4 = "f69f2445df4f9b17ad2b417be66c3710";
     $plainHex  = $plainHex1 . $plainHex2 . $plainHex3 . $plainHex4;
-    $plain     = hex2str($plainHex);
+    $plain     = hex2bin($plainHex);
 
     $cipherHex1         = "601ec313775789a5b7a7f504bbf3d228";
     $cipherHex2         = "f443e3ca4d62b59aca84e990cacaf5c5";
     $cipherHex3         = "2b0930daa23de94ce87017ba2d84988d";
     $cipherHex4         = "dfc9c58db67aada613c2dd08457941a6";
     $cipherHex          = $cipherHex1 . $cipherHex2 . $cipherHex3 . $cipherHex4;
-    $expectedCiphertext = hex2str($cipherHex);
+    $expectedCiphertext = hex2bin($cipherHex);
 
     $keyHex = "603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4";
-    $key    = hex2str($keyHex);
+    $key    = hex2bin($keyHex);
 
     $ctrHex = "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
-    $ctr    = hex2str($ctrHex);
+    $ctr    = hex2bin($ctrHex);
 
     clog("       key (hex)", $keyHex);
     clog("       ctr (hex)", $ctrHex);
@@ -67,7 +79,10 @@ function main ( $argc, $argv )
     test2($key, $ctr, $plain, $expectedCiphertext);
     test3($key, $plain);
     test4($key, $plain);
+
+    return 0;
 }
+
 
 /**
  * Uses phpseclib directly.
@@ -99,6 +114,7 @@ function test1 ( $key, $iv, $plaintext, $expectedCiphertext )
     return verify("test1", $plaintext, $expectedCiphertext, $ciphertext, $recovered);
 }
 
+
 /**
  * Uses FJ-refactored AES calls.
  *
@@ -117,6 +133,7 @@ function test2 ( $key, $iv, $plaintext, $expectedCiphertext )
     return verify("test2", $plaintext, $expectedCiphertext, $ciphertext, $recovered);
 }
 
+
 /**
  * Uses FJ-refactored AES calls, testing if IV matters.
  *
@@ -132,14 +149,15 @@ function test3 ( $key, $plaintext )
     $ctrHex1 = "f0f1f2f3f4f5f6f7f8f9fafbfcfdfe00";
     $ctrHex2 = "f0f1f2f3f4f5f6f7f8f9fafbfcfdfe01";
 
-    $ctr1 = hex2str($ctrHex1);
-    $ctr2 = hex2str($ctrHex2);
+    $ctr1 = hex2bin($ctrHex1);
+    $ctr2 = hex2bin($ctrHex2);
 
     $ciphertext = FJ::encrypt($key, $ctr1, $plaintext);
     $recovered  = FJ::decrypt($key, $ctr2, $ciphertext);
 
     return verify("test3", $plaintext, false, $ciphertext, $recovered, false);
 }
+
 
 /**
  * Uses FJ-refactored AES calls.
@@ -159,6 +177,7 @@ function test4 ( $key, $plaintext )
     return verify("test4", $plaintext, false, $ciphertext, $recovered);
 }
 
+
 /**
  * Checks results, prints output.
  *
@@ -173,13 +192,13 @@ function test4 ( $key, $plaintext )
 function verify ( $mesg, $plaintext, $expectedCiphertext, $ciphertext, $recovered, $isExpectedPass = true )
 {
 
-    $plainHex = str2hex($plaintext);
-    $outHex   = str2hex($ciphertext);
+    $plainHex = bin2hex($plaintext);
+    $outHex   = bin2hex($ciphertext);
 
     // NOTE - Not always comparing to known encrypted result.
     if ( false !== $expectedCiphertext )
     {
-        $cipherHex = str2hex($expectedCiphertext);
+        $cipherHex = bin2hex($expectedCiphertext);
 
         clog("$mesg -             expected ciphertext (hex)", $cipherHex);
         clog("$mesg - Pure-PHP AES (phpseclib) output (hex)", $outHex);
@@ -208,7 +227,7 @@ function verify ( $mesg, $plaintext, $expectedCiphertext, $ciphertext, $recovere
         }
     }
 
-    $recHex              = str2hex($recovered);
+    $recHex              = bin2hex($recovered);
     $isDecryptionWorking = ($recovered === $plaintext);
     //$isDecryptionWorking = false;
 
@@ -233,10 +252,10 @@ function verify ( $mesg, $plaintext, $expectedCiphertext, $ciphertext, $recovere
         {
             FJ::error("$mesg - Pure-PHP AES (phpseclib) DECRYPTION not working.");
         }
-	else
-	{
+        else
+        {
             clog("$mesg - Expected failure");
-	}
+        }
     }
 
     if ( false === $expectedCiphertext )
@@ -249,9 +268,10 @@ function verify ( $mesg, $plaintext, $expectedCiphertext, $ciphertext, $recovere
     }
 }
 
+
 function determineStatus ( $mesg, $base, $actual, $expected )
 {
-    $isGood = ( $expected === $actual );
+    $isGood = ($expected === $actual);
 
     if ( $isGood && $actual )
     {
@@ -288,7 +308,7 @@ function test_mcrypt ()
     $td = mcrypt_module_open('rijndael-256', '', 'ecb', '');
     mcrypt_generic_init($td, $key, $ctr);
     $out    = mcrypt_generic($td, $plain);
-    $outHex = str2hex($out);
+    $outHex = bin2hex($out);
 
     clog("       key (hex)", $keyHex);
     clog("       ctr (hex)", $ctrHex);
@@ -308,3 +328,21 @@ function test_mcrypt ()
 
     return false;
 }
+
+
+/*
+ * ########################################################################
+ * ########################################################################
+ * ########################################################################
+ * ########################################################################
+ * ########################################################################
+ *
+ * NOTE - CLI Entry Point!
+ *
+ * ########################################################################
+ * ########################################################################
+ * ########################################################################
+ * ########################################################################
+ * ########################################################################
+ */
+main($argc, $argv);

@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2012 Troy Wu
+ * Copyright (c) 2012-2019 Troy Wu
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,6 +25,10 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+
+namespace FJ;
+
 
 // Basic operating parameters.
 define("RFC3339_USE_SLOW_INIT", false);

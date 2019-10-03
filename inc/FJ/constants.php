@@ -27,46 +27,43 @@
  */
 
 
-interface CSVisitor
-{
-    /**
-     * @param $lineIndex
-     *
-     * @return mixed
-     */
-    function ante ( $lineIndex );
+namespace FJ;
 
 
-    /**
-     * @param $lineIndex
-     * @param $tokens
-     *
-     * @return mixed
-     */
-    function parseComment ( $lineIndex, $tokens );
+define("LF", "\n");
+define("SLASH", DIRECTORY_SEPARATOR);
+define("CRLF", "\r\n");
+define("DOT", ".");
+define("UNDERSCORE", "_");
+define("TILDE", "~");
 
+// JSON error-detection options.
+define("JSON_DETECT_ERRORS", false);
 
-    /**
-     * NOTE - "Main" method, called for each CSV line tokenized.
-     *
-     * @param int      $lineIndex - Index of line, inclusive of all lines.
-     * @param string[] $tokens    - Array of strings.
-     *
-     * @return mixed
-     */
-    function parse ( $lineIndex, $tokens );
+// Time debugging options.
+define("DEBUG_ANALTIME", false);
+define("DEBUG_RFC3339", false);
 
+// AJAX debugging options.
+define("DEBUG_AJAX_RESPONSE", false);
+define("DEBUG_AJAX_GET", false);
+define("DEBUG_AJAX_POST", false);
+define("DEBUG_AJAX_TIMESTAMP", false);
 
-    /**
-     * @param $lineIndex
-     *
-     * @return mixed
-     */
-    function post ( $lineIndex );
+define("ONE_THOUSAND", 1000);
+define("TEN_THOUSAND", (10 * ONE_THOUSAND));
+define("ONE_HUNDRED_THOUSAND", (10 * TEN_THOUSAND));
+define("ONE_MILLION", (ONE_THOUSAND * ONE_THOUSAND));
+define("ONE_BILLION", (ONE_MILLION * ONE_THOUSAND));
 
+define("FJ_REPORT_ERROR_VERBOSE", true);
+define("FJ_ABORT_ON_ERROR", false);
 
-    /**
-     * @return mixed
-     */
-    function finish ();
-}
+// Image handling -- NOTE - Only use if 'gd' for PHP is installed.
+//define("IMAGE_API_JPEG_QUALITY", 80);
+//define("IMAGE_API_PNG_COMPRESSION_LEVEL", 9);
+//define("IMAGE_API_PNG_FILTERS", PNG_ALL_FILTERS);
+
+define("IMAGE_EXTENSION_JPEG", ".jpg");
+define("IMAGE_EXTENSION_PNG", ".png");
+define("IMAGE_EXTENSION", IMAGE_EXTENSION_PNG);
