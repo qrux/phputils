@@ -55,7 +55,7 @@ define("CLOG_MESG_EXCEPTION_WIDTH", 50);
 define("CLOG_TAB_WIDTH", 1); // Expressed as a power of two.
 define("CLOG_IGNORE_DEPTH", 0);
 define("CLOG_OBEY_DEPTH", 1);
-define("CLOG_TIMING", true);
+define("CLOG_TIMING", false);
 define("CLOG_REMOTE", true);
 define("CLOG_ARRAY_KEY_FANCY", true);
 define("CLOG_DEPTH_INDENT", 4);

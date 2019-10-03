@@ -37,21 +37,19 @@ define("DEFAULT_LIB_DIRS", "lib:lib/phpseclib:lib/phpqrcode");
 
 date_default_timezone_set("UTC");
 
-function looksLikeCLI ()
-{
-    return false == isset($_SERVER["SERVER_PORT"]);
-}
-
-function isCLI ()
-{
-    return looksLikeCLI() && (php_sapi_name() === 'cli');
-}
+function looksLikeCLI () { return false == isset($_SERVER["SERVER_PORT"]); }
+function isCLI () { return looksLikeCLI() && (php_sapi_name() === 'cli'); }
+function isWeb() { return !isCLI(); }
 
 function str2hex ( $string ) { return bin2hex($string); }
 
 function hex2str ( $hex ) { return (string)pack("H*", $hex); }
 
-function color ( $color, $str ) { return $color . $str . TEXT_COLOR_SUFFIX; }
+function color ( $color, $str ) {
+    $str = (null === $str) ? "(null)" : strval($str);
+
+    return FJ::shouldColor() ? ($color . $str . TEXT_COLOR_SUFFIX) : $str;
+}
 
 function todate () { return date('Ymd'); }
 
@@ -87,6 +85,139 @@ function cclog ( $color, $mesg ) { clog(color($color, $mesg)); }
 
 class FJ
 {
+    const CLOG_ERROR_LOG_CONSTANT = 'error_log';
+    const CLOG_FILENAME = "php.clog";
+    const CLOG_TIMING_THRESHOLD = 50; // millis before we mark it red.
+    const CLOG_DEBUG_TIMING = false;
+    const CLOG_FOPEN_MODE = "a+";
+
+
+    private static $logfp = false;
+
+
+    private static function initClogAlternateFiles() {
+        // Look through these dirs, try to create files.
+        $array = [
+            "/srv/www/logs",
+            "/var/log/apache2",
+            "/var/log/apache",
+            "/var/log/httpd",
+            ];
+
+        self::$logfp = false;
+
+        foreach ( $array as $dir ) {
+            $path = $dir . DIRECTORY_SEPARATOR . self::CLOG_FILENAME;
+            $fp = @fopen($path, self::CLOG_FOPEN_MODE);
+            if ( false !== $fp ) {
+                self::$logfp = $fp;
+                return;
+            }
+        }
+    }
+
+
+    /**
+     * This opens a log file statically.
+     *
+     * DANGER - This has a side effect of setting the static file handler.
+     */
+    private static function initClogFileHandle() {
+        if ( isCLI() ) {
+            self::$logfp = false;
+            return;
+        }
+
+        if ( false !== self::$logfp ) return;
+
+        $errorLogPath = ini_get(self::CLOG_ERROR_LOG_CONSTANT);
+        $errorLogDir = dirname($errorLogPath);
+
+        if ( !$errorLogPath || 0 == strlen($errorLogDir) ) {
+            $logdir = pathinfo(realpath("/proc/".getmypid()."/fd/2"), PATHINFO_DIRNAME);
+
+            if ( !$logdir || 0 == strlen($logdir) ) {
+                self::initClogAlternateFiles();
+                return;
+            } else {
+                $clogFilePath = $logdir . DIRECTORY_SEPARATOR . self::CLOG_FILENAME;
+            }
+        } else {
+            $clogFilePath = $errorLogDir . DIRECTORY_SEPARATOR . self::CLOG_FILENAME;
+        }
+
+        error_log("Trying to open clog file @ $clogFilePath...");
+
+        self::$logfp = @fopen($clogFilePath, self::CLOG_FOPEN_MODE);
+    }
+
+
+    private static function isClogFileOpen() { return false !== self::$logfp; }
+
+
+    private static function outputClog($mesg) {
+        if ( self::isClogFileOpen() ) {
+            // Actually write to file.
+            $bytesWritten = @fwrite(self::$logfp, $mesg);
+        } else {
+            error_log($mesg);
+        }
+    }
+
+
+    public static function shouldColor() { return isCLI() || self::isClogFileOpen(); }
+
+
+    private static function log ( $mesg )
+    {
+        //error_log("FJ::log()");
+        self::initClogFileHandle();
+
+        if ( isWeb() && array_key_exists('REQUEST_TIME_FLOAT', $_SERVER) ) {
+            //error_log("Why doesn't this appear??");
+
+            $now = new AnalTime();
+            $rfc = $now->rfc();
+
+            $mesgCustom = self::shouldColor() ? $rfc : "";
+
+            $nowMillis = $now->getWholeMillis();
+            $reqTimeSec = $_SERVER['REQUEST_TIME_FLOAT'];
+            $reqTimeMillis = $reqTimeSec * 1000;
+            $diffMillis = $nowMillis - $reqTimeMillis;
+            $diffMillisRounded = round($diffMillis);
+
+            $color = (self::CLOG_TIMING_THRESHOLD < $diffMillisRounded)
+                ? TEXT_COLOR_BG_RED
+                : TEXT_COLOR_YELLOW
+            ;
+
+            if ( self::CLOG_DEBUG_TIMING ) {
+                //error_log("rfc: $rfc");
+                //error_log("now: $nowMillis");
+                //error_log("req: $reqTimeMillis");
+                //error_log("dif: $diffMillis");
+                //error_log("dif-rounded: $diffMillisRounded");
+            }
+
+            $diffString = sprintf("(+%'_3dms)", $diffMillisRounded);
+
+            $diffInfo = color($color, $diffString);
+            $mesgCustom .= " $diffInfo";
+
+            $self = color(TEXT_COLOR_GREEN, $_SERVER['PHP_SELF']);
+            $mesgCustom .= " $self";
+            $mesgCustom .= " $mesg";
+
+            if ( self::shouldColor() ) $mesgCustom .= "\n";
+        } else {
+            $mesgCustom = $mesg;
+        }
+
+        self::outputClog($mesgCustom);
+    }
+
+
     public static function boolToClogString ( $boolVal ) { return $boolVal ? color(TEXT_COLOR_GREEN, "TRUE") : color(TEXT_COLOR_RED, "FALSE"); }
 
 
@@ -97,7 +228,7 @@ class FJ
         else
             $mesg = color(TEXT_COLOR_YELLOW, strval($scalar));
 
-        error_log($prefix . $mesg);
+        self::log($prefix . $mesg);
     }
 
 
@@ -359,8 +490,10 @@ class FJ
 
         if ( CLOG_SHOULD_OUTPUT_REMOTE_ADDR_INFO )
         {
-            $remote = $_SERVER['REMOTE_ADDR'] . ":" . $_SERVER['REMOTE_PORT'] . " ";
-            $remote = color(TEXT_COLOR_YELLOW, $remote);
+            //$remote = $_SERVER['REMOTE_ADDR'] . ":" . $_SERVER['REMOTE_PORT'] . " ";
+            $remote = $_SERVER['REMOTE_ADDR'] . ":" . $_SERVER['REMOTE_PORT'] . "/" . $_SERVER['REQUEST_METHOD'] . " ";
+            $remote = $_SERVER['REMOTE_ADDR'] . "/" . $_SERVER['REQUEST_METHOD'] . " ";
+            //$remote = color(TEXT_COLOR_YELLOW, $remote);
         }
 
         $prefix = $time . $remote;
@@ -375,7 +508,7 @@ class FJ
         {
             $str = color(TEXT_COLOR_BG_RED, "[NULL object]");
             $str = "== " . color(TEXT_COLOR_YELLOW, $desc) . " " . $str . " ==";
-            error_log($prefix . $str);
+            self::log($prefix . $str);
             return;
         }
         else if ( is_array($item) )
@@ -414,7 +547,7 @@ class FJ
                     $type = color(TEXT_COLOR_YELLOW, "<$type>");
                     $str  = color($color, $str);
 
-                    error_log($prefix . "$type: $str");
+                    self::log($prefix . "$type: $str");
                 }
                 catch ( ReflectionException $e )
                 {
@@ -442,9 +575,9 @@ class FJ
     {
         $indent = self::clogCreateIndent($depth);
 
-        //error_log("clogHandleArray/prefix: $prefix");
-        //error_log("clogHandleArray/indent: [$indent]");
-        //error_log("clogHandleArray/parent-pre: [$parentPre]");
+        //self::log("clogHandleArray/prefix: $prefix");
+        //self::log("clogHandleArray/indent: [$indent]");
+        //self::log("clogHandleArray/parent-pre: [$parentPre]");
         //print_r($item);
 
         $count = count($item);
@@ -453,7 +586,7 @@ class FJ
         {
             $str = color(TEXT_COLOR_BG_RED, "[EMPTY array]");
             $str = "== " . color(TEXT_COLOR_YELLOW, $desc) . " " . $str . " ==";
-            error_log($prefix . $str);
+            self::log($prefix . $str);
             return;
         }
 
@@ -490,15 +623,15 @@ class FJ
         $pre = sprintf($blank, $desc);
         $pre = color(TEXT_COLOR_UL_YELLOW, $pre);
 
-        //error_log("clogHandleArray/pre: $pre");
+        //self::log("clogHandleArray/pre: $pre");
 
         if ( 0 === $depth )
         {
-            error_log($prefix . $pre);
+            self::log($prefix . $pre);
         }
         else
         {
-            //error_log($prefix . $parentPre . "<Array>");
+            //self::log($prefix . $parentPre . "<Array>");
         }
 
         //if ( 0 !== $depth )
@@ -513,7 +646,7 @@ class FJ
             {
                 $post = color(TEXT_COLOR_UL_CYAN, "Array");
                 $str  = $pre . $post;
-                error_log($prefix . $indent . $str);
+                self::log($prefix . $indent . $str);
 
                 // Recursion.
                 self::clogHandleArray($prefix, $desc, $val, 1 + $depth, $pre);
@@ -525,7 +658,7 @@ class FJ
                 $post = color(TEXT_COLOR_GREEN, $val);
                 $str  = $pre . $post;
 
-                error_log($prefix . $indent . $str);
+                self::log($prefix . $indent . $str);
             }
         }
     }
@@ -570,7 +703,7 @@ class FJ
         {
             $str = sprintf("========######## [ %s ] ########========", $ex->getMessage());
             $str = color(TEXT_COLOR_UL_YELLOW, $str);
-            error_log($str);
+            self::log($str);
             return;
         }
 
@@ -583,7 +716,7 @@ class FJ
 
         $str = sprintf("%3d) %s - (%s:%d)", $depth, $mesg, $file, $ex->getLine());
         $str = color(TEXT_COLOR_BG_RED, $str);
-        error_log($str);
+        self::log($str);
 
         $trace      = $ex->getTrace();
         $traceCount = count($trace);
@@ -608,7 +741,7 @@ class FJ
 
             $str = sprintf("%3d) %s%-{$exceptionLineGap}s - (%s)", $depth, "", $caller, $mesg);
             $str = color(TEXT_COLOR_BG_RED, $str);
-            error_log($str);
+            self::log($str);
         }
     }
 
@@ -820,7 +953,7 @@ require_once("constants.php");
 //require_once("jsconst.php");
 
 // NOTE - Derivative constants.
-define("CLOG_SHOULD_OUTPUT_REMOTE_ADDR_INFO", (CLOG_REMOTE && !isCLI()));
+define("CLOG_SHOULD_OUTPUT_REMOTE_ADDR_INFO", (CLOG_REMOTE && isWeb()));
 
 // Register the autoloader.
 spl_autoload_register('FJ::autoloader');
