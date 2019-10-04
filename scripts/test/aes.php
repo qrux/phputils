@@ -32,11 +32,16 @@
  */
 
 
-require_once(__DIR__ . "/../../inc/FJ/autoloader.php");
+require_once(__DIR__ . "/../../inc/autoloader.php");
+
+//require_once(__DIR__ . "/../../inc/phpseclib/bootstrap.php");
 
 
-use function \FJ\clog;
 use \FJ\FJ;
+use \FJ\Log;
+use function \FJ\clog;
+use function \FJ\cclog;
+use \phpseclib\Crypt\AES;
 
 
 /**
@@ -96,7 +101,7 @@ function main ( $argc, $argv )
  */
 function test1 ( $key, $iv, $plaintext, $expectedCiphertext )
 {
-    $aes = new Crypt_AES(CRYPT_AES_MODE_CTR);
+    $aes = new AES(FJ::FJ_DEFAULT_AES_MODE);
     //$cipher->setPassword('whatever');
     $aes->setKey($key);
     $aes->setIV($iv);
@@ -171,10 +176,30 @@ function test3 ( $key, $plaintext )
  */
 function test4 ( $key, $plaintext )
 {
-    $ciphertext = FJ::encrypt($key, "hello", $plaintext);
-    $recovered  = FJ::decrypt($key, "hello", $ciphertext);
+    $iv = "hello";
 
-    return verify("test4", $plaintext, false, $ciphertext, $recovered);
+    try
+    {
+        $ciphertext = FJ::encrypt($key, $iv, $plaintext);
+    }
+    catch ( LengthException $e )
+    {
+        $ciphertext = "<exception-occurred-no-ciphertext>";
+        Log::warn("Expected FJ::encrypt() failure using IV with BAD LENGTH ($iv)");
+    }
+
+
+    try
+    {
+        $recovered = FJ::decrypt($key, $iv, $ciphertext);
+    }
+    catch ( LengthException $e )
+    {
+        $recovered = "<exception-occurred-no-decrypted-text>";
+        Log::warn("Expected FJ::decrypt() failure using IV with BAD LENGTH ($iv)");
+    }
+
+    return verify("test4", $plaintext, false, $ciphertext, $recovered, false);
 }
 
 
@@ -215,14 +240,14 @@ function verify ( $mesg, $plaintext, $expectedCiphertext, $ciphertext, $recovere
         {
             if ( !$isEncryptionWorking )
             {
-                FJ::error("$mesg - Pure-PHP AES (phpseclib) ENCRYPTION not working.");
+                Log::error("$mesg - Pure-PHP AES (phpseclib) ENCRYPTION not working.");
             }
         }
         else
         {
             if ( $isEncryptionWorking )
             {
-                FJ::error("$mesg - Pure-PHP AES (phpseclib) ENCRYPTION not working.");
+                Log::error("$mesg - Pure-PHP AES (phpseclib) ENCRYPTION not working.");
             }
         }
     }
@@ -243,14 +268,14 @@ function verify ( $mesg, $plaintext, $expectedCiphertext, $ciphertext, $recovere
     {
         if ( !$isDecryptionWorking )
         {
-            FJ::error("$mesg - Pure-PHP AES (phpseclib) DECRYPTION not working.");
+            Log::error("$mesg - Pure-PHP AES (phpseclib) DECRYPTION not working.");
         }
     }
     else
     {
         if ( $isDecryptionWorking )
         {
-            FJ::error("$mesg - Pure-PHP AES (phpseclib) DECRYPTION not working.");
+            Log::error("$mesg - Pure-PHP AES (phpseclib) DECRYPTION not working.");
         }
         else
         {

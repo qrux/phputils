@@ -56,9 +56,6 @@ define("ONE_HUNDRED_THOUSAND", (10 * TEN_THOUSAND));
 define("ONE_MILLION", (ONE_THOUSAND * ONE_THOUSAND));
 define("ONE_BILLION", (ONE_MILLION * ONE_THOUSAND));
 
-define("FJ_REPORT_ERROR_VERBOSE", true);
-define("FJ_ABORT_ON_ERROR", false);
-
 // Image handling -- NOTE - Only use if 'gd' for PHP is installed.
 //define("IMAGE_API_JPEG_QUALITY", 80);
 //define("IMAGE_API_PNG_COMPRESSION_LEVEL", 9);

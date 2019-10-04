@@ -30,11 +30,19 @@
 namespace FJ;
 
 
+use \phpseclib\Crypt\AES;
+
+
+
 class FJ
 {
+    const FJ_DEFAULT_AES_MODE = "ctr";
+    const FJ_JSON_DETECT_ERRORS = false;
+
+
     public static function encrypt ( $key, $iv, $plaintext )
     {
-        $aes = new \Crypt_AES(CRYPT_AES_MODE_CTR);
+        $aes = new AES(self::FJ_DEFAULT_AES_MODE);
         $aes->setKey($key);
         $aes->setIV($iv);
         return $aes->encrypt($plaintext);
@@ -43,9 +51,100 @@ class FJ
 
     public static function decrypt ( $key, $iv, $ciphertext )
     {
-        $aes = new \Crypt_AES(CRYPT_AES_MODE_CTR);
+        $aes = new AES(self::FJ_DEFAULT_AES_MODE);
         $aes->setKey($key);
         $aes->setIV($iv);
         return $aes->decrypt($ciphertext);
+    }
+
+
+    public static function jsEncode ( $obj )
+    {
+        $json = json_encode($obj);
+
+        if ( self::FJ_JSON_DETECT_ERRORS ) self::detectJSONError($obj, $json, true);
+
+        return $json;
+    }
+
+
+    public static function jsDecode ( $json, $useAssoc = true )
+    {
+        $string = json_decode($json, $useAssoc);
+
+        if ( self::FJ_JSON_DETECT_ERRORS ) self::detectJSONError($json, $string, false);
+
+        return $string;
+    }
+
+
+    private static function detectJSONError ( $input, $output, $isEncode = true )
+    {
+        $function = $isEncode ? "encoding" : "decoding";
+
+        if ( false === $output )
+            clog("JSON error $function [ $input ]");
+
+        switch ( json_last_error() )
+        {
+            case JSON_ERROR_NONE:
+                $jsonErrorMessage = null;
+                break;
+            case JSON_ERROR_DEPTH:
+                $jsonErrorMessage = '- Maximum stack depth exceeded';
+                break;
+            case JSON_ERROR_STATE_MISMATCH:
+                $jsonErrorMessage = '- Underflow or the modes mismatch';
+                break;
+            case JSON_ERROR_CTRL_CHAR:
+                $jsonErrorMessage = '- Unexpected control character found';
+                break;
+            case JSON_ERROR_SYNTAX:
+                $jsonErrorMessage = '- Syntax error, malformed JSON';
+                break;
+            case JSON_ERROR_UTF8:
+                $jsonErrorMessage = '- Malformed UTF-8 characters, possibly incorrectly encoded';
+                break;
+            default:
+                $jsonErrorMessage = '- Unknown error';
+                break;
+        }
+
+        if ( null !== $jsonErrorMessage )
+            clog("-----=====[ JSON encoding error $jsonErrorMessage ]=====-----");
+    }
+
+
+    public static function randBytes ( $length )
+    {
+        // method 1. the fastest
+        if ( function_exists('openssl_random_pseudo_bytes') )
+        {
+            return openssl_random_pseudo_bytes($length);
+        }
+        // method 2
+        static $fp = true;
+        if ( $fp === true )
+        {
+            // warning's will be output unles the error suppression operator is used. errors such as
+            // "open_basedir restriction in effect", "Permission denied", "No such file or directory", etc.
+            $fp = @fopen('/dev/urandom', 'rb');
+        }
+        if ( $fp !== true && $fp !== false )
+        { // surprisingly faster than !is_bool() or is_resource()
+            return fread($fp, $length);
+        }
+        // method 3. pretty much does the same thing as method 2 per the following url:
+        // https://github.com/php/php-src/blob/7014a0eb6d1611151a286c0ff4f2238f92c120d6/ext/mcrypt/mcrypt.c#L1391
+        // surprisingly slower than method 2. maybe that's because mcrypt_create_iv does a bunch of error checking that we're
+        // not doing. regardless, this'll only be called if this PHP script couldn't open /dev/urandom due to open_basedir
+        // restrictions or some such
+        if ( function_exists('mcrypt_create_iv') )
+        {
+            return mcrypt_create_iv($length, MCRYPT_DEV_URANDOM);
+        }
+
+        // We've failed to get a good random number; throw exception.
+        throw new Exception("Could not get high-quality random number (openssl, /dev/urandom, mcrypt all FAILED); aborting.");
     }
 }
