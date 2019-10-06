@@ -24,3 +24,10 @@ Run JS body like this:
     }
 
 (you already know this; I'm always forgetting).
+
+
+## Dependencies
+
+https://sourceforge.net/projects/phpqrcode/
+
+https://github.com/phpseclib/phpseclib
