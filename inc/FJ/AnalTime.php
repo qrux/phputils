@@ -30,6 +30,11 @@
 namespace FJ;
 
 
+use DateTime;
+use DateTimeZone;
+use Exception;
+
+
 /**
  * ************************************************************************
  * Reads any-old-timespec.  If it's parseable at all, we will
@@ -180,7 +185,7 @@ class AnalTime extends RFC3339
         }
         catch ( Exception $e )
         {
-            if ( DEBUG_ANALTIME ) clog("AT.parse() - Not an RFC-3339 compliant timestamp [ " . $e->getMessage() . " ] ; moving on...");
+            if ( DEBUG_ANALTIME ) error_log("AT.parse() - Not an RFC-3339 compliant timestamp [ " . $e->getMessage() . " ] ; moving on...");
         }
 
         try
@@ -191,17 +196,17 @@ class AnalTime extends RFC3339
         }
         catch ( Exception $e )
         {
-            if ( DEBUG_ANALTIME ) clog("AT.parse() - Not a UT->GMT crazy-timespec; moving on...");
+            if ( DEBUG_ANALTIME ) error_log("AT.parse() - Not a UT->GMT crazy-timespec; moving on...");
         }
 
-        if ( DEBUG_ANALTIME ) clog("AT.parse/timespec", $timespec);
+        if ( DEBUG_ANALTIME ) error_log("AT.parse/timespec: $timespec");
 
         if ( RFC3339::isRelaxedMatch($timespec) )
         {
             if ( null !== $tz )
             {
-                if ( DEBUG_ANALTIME && is_string($tz) ) clog("AT.parse/tz-raw", $tz);
-                if ( DEBUG_ANALTIME && $tz instanceof DateTimeZone ) clog("AT.parse/DTZ", $tz->getName());
+                if ( DEBUG_ANALTIME && is_string($tz) ) error_log("AT.parse/tz-raw: $tz");
+                if ( DEBUG_ANALTIME && $tz instanceof DateTimeZone ) error_log("AT.parse/DTZ: " . $tz->getName());
 
                 $unrelaxedTimespec = self::getISOWithForcedTimezone($timespec, $tz);
             }
@@ -210,7 +215,7 @@ class AnalTime extends RFC3339
                 $unrelaxedTimespec = $timespec . RFC3339::UNKNOWN_OFFSET_STRING;
             }
 
-            if ( DEBUG_ANALTIME ) clog("AT.parse/unrelaxedTimespec", $unrelaxedTimespec);
+            if ( DEBUG_ANALTIME ) error_log("AT.parse/unrelaxedTimespec: $unrelaxedTimespec");
 
             return $unrelaxedTimespec;
         }
@@ -228,7 +233,7 @@ class AnalTime extends RFC3339
             $iso               = date(self::DATE_FORMAT_WITHOUT_TIMEZONE, $secondsSinceEpoch);
 
             // Add fractional & UTC (zulu) timezone.
-            $iso .= ".$usec" . self::ZULU_OFFSET_STRING;
+            $iso  .= ".$usec" . self::ZULU_OFFSET_STRING;
             $core = new RFC3339($iso);
             return $core->rfc();
         }
@@ -250,8 +255,8 @@ class AnalTime extends RFC3339
             {
                 $dttz = $dt->getTimezone();
 
-                if ( DEBUG_ANALTIME ) clog("AT.parse/dttz", $dttz);
-                if ( null == $dttz && DEBUG_ANALTIME ) clog("AT.parse/dttz-is-null!");
+                if ( DEBUG_ANALTIME ) error_log("AT.parse/dttz: " . $dttz);
+                if ( null == $dttz && DEBUG_ANALTIME ) error_log("AT.parse/dttz-is-null!");
 
                 if ( null !== $dttz )
                 {
@@ -263,15 +268,15 @@ class AnalTime extends RFC3339
 
             //$tz = (null !== $tz) ? $tz : $tz = $dt->getTimezone();
 
-            if ( DEBUG_ANALTIME ) clog("AT.parse/dt-ISO", $dt->format("c"));
-            if ( DEBUG_ANALTIME ) clog("AT.parse/dt-timezone", $tz->getName());
+            if ( DEBUG_ANALTIME ) error_log("AT.parse/dt-ISO: " . $dt->format("c"));
+            if ( DEBUG_ANALTIME ) error_log("AT.parse/dt-timezone: " . $tz->getName());
 
             $timespec = self::getISOWithForcedTimezone($dt, $tz);
             return $timespec;
         }
         catch ( Exception $e )
         {
-            if ( DEBUG_ANALTIME ) clog("AT.parse() - Not a PHP-recognizable timespec; giving up.");
+            if ( DEBUG_ANALTIME ) error_log("AT.parse() - Not a PHP-recognizable timespec; giving up.");
             throw $e;
         }
     }
@@ -319,8 +324,8 @@ class AnalTime extends RFC3339
         $shouldForceTimezone = (null !== $tz);
         $basic               = is_string($dt) ? $dt : $dt->format(RFC3339::DATE_FORMAT_WITHOUT_TIMEZONE);
 
-        if ( DEBUG_ANALTIME ) clog("AT.getISOWithForcedTimezone/shouldForceTimezone", $shouldForceTimezone);
-        if ( DEBUG_ANALTIME ) clog("AT.getISOWithForcedTimezone/basic", $basic);
+        if ( DEBUG_ANALTIME ) error_log("AT.getISOWithForcedTimezone/shouldForceTimezone: " . $shouldForceTimezone);
+        if ( DEBUG_ANALTIME ) error_log("AT.getISOWithForcedTimezone/basic: " . $basic);
 
         if ( $shouldForceTimezone )
         {
@@ -346,7 +351,7 @@ class AnalTime extends RFC3339
                 }
             }
 
-            if ( DEBUG_ANALTIME ) clog("AT.getISOWithForcedTimezone/offsetString", $offsetString);
+            if ( DEBUG_ANALTIME ) error_log("AT.getISOWithForcedTimezone/offsetString: " . $offsetString);
 
             return $basic . $offsetString;
         }
@@ -379,7 +384,7 @@ class AnalTime extends RFC3339
     {
         if ( is_string($tz) ) $tz = new DateTimeZone($tz);
 
-        if ( DEBUG_ANALTIME ) clog("AT::getTimezoneOffsetString/DTZ", $tz->getName());
+        if ( DEBUG_ANALTIME ) error_log("AT::getTimezoneOffsetString/DTZ: " . $tz->getName());
 
         $offsetInSeconds = $tz->getOffset($dt);
         return self::convertOffsetSecondsToOffsetString($offsetInSeconds);
@@ -444,6 +449,7 @@ class AnalTime extends RFC3339
         return $whole;
     }
 
+
     /**
      * NOTE - Probably requires 64-bit arithmetic.
      *
@@ -459,12 +465,14 @@ class AnalTime extends RFC3339
         return $whole;
     }
 
+
     private function getJustFractionalMillis ()
     {
         $fm    = round($this->usec() / 1000, 3);
         $whole = sprintf("%07.3f", $fm);
         return $whole;
     }
+
 
     /**
      * @return float - The number of whole seconds, rounded-to-nearest,
@@ -474,6 +482,7 @@ class AnalTime extends RFC3339
     {
         return round($this->getWholeMicros() / 1000000);
     }
+
 
     /**
      * Gets a timestamp in whole milliseconds, rounded-to-nearest.
@@ -489,6 +498,7 @@ class AnalTime extends RFC3339
     {
         return round($this->getWholeMicros() / 1000);
     }
+
 
     /**
      * Gets this timestamp in whole microseconds.
@@ -514,11 +524,11 @@ class AnalTime extends RFC3339
         $dt = $this->getDateTime();
         $dt->setTimezone($tz);
 
-        if ( DEBUG_RFC3339 ) clog("RFC-3339.shiftTimezone/dt-ISO", $dt->format("c"));
-        if ( DEBUG_RFC3339 ) clog("RFC-3339.shiftTimezone/dt-timestamp", $dt->getTimestamp());
-        if ( DEBUG_RFC3339 ) clog("RFC-3339.shiftTimezone/dt-fraction", $this->usec());
+        if ( DEBUG_RFC3339 ) error_log("RFC-3339.shiftTimezone/dt-ISO: " . $dt->format("c"));
+        if ( DEBUG_RFC3339 ) error_log("RFC-3339.shiftTimezone/dt-timestamp: " . $dt->getTimestamp());
+        if ( DEBUG_RFC3339 ) error_log("RFC-3339.shiftTimezone/dt-fraction: " . $this->usec());
 
-        if ( DEBUG_RFC3339 ) clog("RFC3339.shiftTimezone/BTWN", $this);
+        if ( DEBUG_RFC3339 ) error_log("RFC3339.shiftTimezone/BTWN :" . $this);
 
         if ( $this->hasFractional() )
         {
@@ -535,7 +545,7 @@ class AnalTime extends RFC3339
             $timespec = $dt->format("c");
         }
 
-        if ( DEBUG_RFC3339 ) clog("RFC-3339.shiftTimezone/shifted-timespec", $timespec);
+        if ( DEBUG_RFC3339 ) error_log("RFC-3339.shiftTimezone/shifted-timespec: " . $timespec);
 
         $shifted = new AnalTime($timespec);
         return $shifted;

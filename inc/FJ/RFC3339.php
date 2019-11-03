@@ -31,6 +31,11 @@ namespace FJ;
 
 
 // Basic operating parameters.
+use DateTime;
+use DateTimeZone;
+use Exception;
+
+
 define("RFC3339_USE_SLOW_INIT", false);
 
 // RFC-3339 timezone offset string pattern
@@ -52,6 +57,7 @@ define("RFC3339_REGEX_CAPTURE_TZ", 3);
 define("RFC3339_REGEX_CAPTURE_TZ_SIGN", 4);
 define("RFC3339_REGEX_CAPTURE_TZ_HOUR", 5);
 define("RFC3339_REGEX_CAPTURE_TZ_MINUTE", 6);
+
 
 /**
  * ************************************************************************
@@ -132,11 +138,11 @@ class RFC3339 implements Wired
 
     private $isMaterializing = false;
 
-    private $mt = false; // String returned by microtime.
+    private $mt       = false; // String returned by microtime.
     private $fraction = false; // fraction-of-a-second: could be from timespec or microtime().
 
     private $usec = false; // Microseconds represented by $fraction.
-    private $sec = false; // As determined by microtime.
+    private $sec  = false; // As determined by microtime.
 
     private $timespec = false;
 
@@ -148,7 +154,9 @@ class RFC3339 implements Wired
 
     public static function UTC ()
     {
-        return (false !== self::$TIMEZONE_UTC) ? self::$TIMEZONE_UTC : (self::$TIMEZONE_UTC = new DateTimeZone("UTC"));
+        return (false !== self::$TIMEZONE_UTC)
+            ? self::$TIMEZONE_UTC
+            : (self::$TIMEZONE_UTC = new DateTimeZone("UTC"));
     }
 
 
@@ -158,13 +166,13 @@ class RFC3339 implements Wired
     }
 
 
-    public static function isStrictMatch ( $timespec, &$matches = array () )
+    public static function isStrictMatch ( $timespec, &$matches = [] )
     {
         return preg_match(RFC3339_PATTERN_STRICT, $timespec, $matches);
     }
 
 
-    public static function isRelaxedMatch ( $timespec, &$matches = array () )
+    public static function isRelaxedMatch ( $timespec, &$matches = [] )
     {
         return preg_match(RFC3339_PATTERN_RELAXED, $timespec, $matches);
     }
@@ -182,7 +190,7 @@ class RFC3339 implements Wired
         {
             $this->mt = microtime(false);
 
-            if ( DEBUG_RFC3339 ) clog("-----=====[ RFC-3339.ctor/timer ]=====-----");
+            if ( DEBUG_RFC3339 ) error_log("-----=====[ RFC-3339.ctor/timer ]=====-----");
 
             if ( RFC3339_USE_SLOW_INIT ) $this->materializeState();
         }
@@ -190,7 +198,7 @@ class RFC3339 implements Wired
         {
             $this->mt = $timespec;
 
-            if ( DEBUG_RFC3339 ) clog("-----=====[ RFC-3339.ctor/timer-with-explicit-start ]=====-----");
+            if ( DEBUG_RFC3339 ) error_log("-----=====[ RFC-3339.ctor/timer-with-explicit-start ]=====-----");
 
             if ( RFC3339_USE_SLOW_INIT ) $this->materializeState();
         }
@@ -198,7 +206,7 @@ class RFC3339 implements Wired
         {
             $this->timespec = $timespec;
 
-            if ( DEBUG_RFC3339 ) clog("-----=====[ RFC-3339.ctor/normal ]=====-----");
+            if ( DEBUG_RFC3339 ) error_log("-----=====[ RFC-3339.ctor/normal ]=====-----");
 
             /*
              * This has to be done to fully-initialize the rest of the object.
@@ -261,7 +269,7 @@ class RFC3339 implements Wired
          * microseconds-portion).
          */
 
-        if ( DEBUG_RFC3339 ) clog("RFC-3339.parseTimespec", $this->timespec);
+        if ( DEBUG_RFC3339 ) error_log("RFC-3339.parseTimespec: " . $this->timespec);
 
         // NOTE - PHP's preg_match has a side-effect of actually parsing and storing the captures ($this->parts).
         // NOTE - This next line should end the recursion from materializeState() -> here -> ... -> materializeState().
@@ -280,13 +288,13 @@ class RFC3339 implements Wired
 
         array_shift($this->parts); // Get rid of the [0], which is the whole string.
 
-        if ( DEBUG_RFC3339 ) clog("RFC-3339.parseTimespec/regex-captures", $this->parts);
+        if ( DEBUG_RFC3339 ) error_log("RFC-3339.parseTimespec/regex-captures: " . $this->parts);
 
         //$hasFractionPart = isset($this->parts[RFC3339_REGEX_CAPTURE_FRACTION]);
         $hasFraction    = 0 < strlen($this->parts[RFC3339_REGEX_CAPTURE_FRACTION]);
         $this->fraction = $hasFraction ? $this->parts[RFC3339_REGEX_CAPTURE_FRACTION] : false;
 
-        if ( DEBUG_RFC3339 ) clog("RFC-3339.parseTimespec/usec", $this->fraction);
+        if ( DEBUG_RFC3339 ) error_log("RFC-3339.parseTimespec/usec: " . $this->fraction);
 
         // Initialize timer-val from microtime() output.
         $this->setTimerVal();
@@ -308,7 +316,7 @@ class RFC3339 implements Wired
      */
     private function setTimerVal ()
     {
-        if ( DEBUG_RFC3339 ) clog("RFC-3339.setTimerVal/fraction", $this->fraction);
+        if ( DEBUG_RFC3339 ) error_log("RFC-3339.setTimerVal/fraction: " . $this->fraction);
 
         if ( false === $this->fraction )
         {
@@ -338,7 +346,7 @@ class RFC3339 implements Wired
         $usecString = sprintf("%0.8f", $usec);
         $this->mt   = "$usecString $secString";
 
-        if ( DEBUG_RFC3339 ) clog("RFC-3339.setTimerVal/microtime", $this->mt);
+        if ( DEBUG_RFC3339 ) error_log("RFC-3339.setTimerVal/microtime: " . $this->mt);
     }
 
 
@@ -435,8 +443,8 @@ class RFC3339 implements Wired
         $wholeDiff      = $this->getWholeSecondsDiff($anotherTime);
         $fractionalDiff = $this->getFractionalDiff($anotherTime);
 
-        if ( DEBUG_RFC3339 ) clog("RFC-3339.diff/whole", $wholeDiff);
-        if ( DEBUG_RFC3339 ) clog("RFC-3339.diff/frac", $fractionalDiff);
+        if ( DEBUG_RFC3339 ) error_log("RFC-3339.diff/whole: ", $wholeDiff);
+        if ( DEBUG_RFC3339 ) error_log("RFC-3339.diff/frac: ", $fractionalDiff);
 
         $absTotalDiffInSeconds = abs($wholeDiff + $fractionalDiff);
         return $absTotalDiffInSeconds;
@@ -460,7 +468,8 @@ class RFC3339 implements Wired
      * @return float - Difference, in partial seconds, between the two
      * fraction-of-a-second components.
      */
-    private function getFractionalDiff ( $anotherTime ) {
+    private function getFractionalDiff ( $anotherTime )
+    {
 
         $myMicro    = $this->getFractionAsFloat();
         $otherMicro = $anotherTime->getFractionAsFloat();
@@ -525,14 +534,14 @@ class RFC3339 implements Wired
     {
         $this->materializeState();
 
-        return array (
+        return [
             "mt"       => $this->mt,
             "fraction" => $this->fraction,
             "usec"     => $this->usec,
             "sec"      => $this->sec,
             "timespec" => $this->timespec,
-            "parts"    => $this->parts
-        );
+            "parts"    => $this->parts,
+        ];
     }
 
 
