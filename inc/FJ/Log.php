@@ -135,16 +135,16 @@ class Log
      */
     public static function dump ()
     {
-        switch ( func_num_args() )
-        {
-            case 2:
-                clog(func_get_arg(0), func_get_arg(1));
-                break;
-
-            default:
-                clog(func_get_arg(0));
-                break;
-        }
+//        switch ( func_num_args() )
+//        {
+//            case 2:
+//                clog(func_get_arg(0), func_get_arg(1));
+//                break;
+//
+//            default:
+//                clog(func_get_arg(0));
+//                break;
+//        }
 
         try
         {
@@ -152,7 +152,7 @@ class Log
         }
         catch ( \Exception $e )
         {
-            clog($e);
+            self::logException($e);
         }
     }
 
@@ -211,7 +211,7 @@ class Log
     private static function b2s ( $boolVal )
     {
         return $boolVal
-            ? self::color(self::TEXT_COLOR_GREEN, "TRUE")
+            ? self::color(self::TEXT_COLOR_GREEN, "true")
             : self::color(self::TEXT_COLOR_RED, "FALSE");
     }
 
@@ -515,11 +515,16 @@ class Log
         if ( false !== self::$logfp ) return;
 
         $errorLogPath = ini_get(self::CLOG_ERROR_LOG_CONSTANT);
-        $errorLogDir  = dirname($errorLogPath);
+
+        //error_log("Log - error-log-path: $errorLogPath");
+
+        $errorLogDir = dirname($errorLogPath);
 
         if ( !$errorLogPath || 0 == strlen($errorLogDir) )
         {
             $logdir = pathinfo(realpath("/proc/" . getmypid() . "/fd/2"), PATHINFO_DIRNAME);
+
+            //error_log("Log - log-dir: $logdir");
 
             if ( !$logdir || 0 == strlen($logdir) )
             {
@@ -549,9 +554,14 @@ class Log
         foreach ( self::CLOG_ALT_FILE_DIRS as $dir )
         {
             $path = $dir . DIRECTORY_SEPARATOR . self::CLOG_FILENAME;
-            $fp   = @fopen($path, self::CLOG_FOPEN_MODE);
+
+            //error_log("Log - Trying to open [ $path ] ...");
+
+            $fp = @fopen($path, self::CLOG_FOPEN_MODE);
             if ( false !== $fp )
             {
+                //error_log("Log - WIN - opened path [ $path ].");
+
                 self::$logfp = $fp;
                 return;
             }

@@ -46,27 +46,29 @@ class Ajax
             setcookie(session_name(), '', time() - 42000, '/');
         }
 
-        clog("nukeSession - COOKIES--");
+        clog("nukeSession - ANTE - COOKIES", $_COOKIE);
         clog($_COOKIE);
+        clog("nukeSession - POST - COOKIES", $_COOKIE);
 
-        //$_SESSION[ 'valid' ] = false;
-        $_SESSION = array();
+        $_SESSION = [];
         session_destroy();
     }
 
-    protected $hasFiles = false;
-    protected $post = array();
-    protected $get = array();
-    protected $jsonInput = array();
 
-    protected $now = null;
-    protected $at = null;
+    protected $hasFiles  = false;
+    protected $post      = [];
+    protected $get       = [];
+    protected $jsonInput = [];
+
+    protected $now     = null;
+    protected $at      = null;
     protected $success = false;
-    protected $mesg = null;
-    protected $data = array();
+    protected $mesg    = null;
+    protected $data    = [];
 
-    protected $apiName = "?";
+    protected $apiName      = "?";
     protected $hasResponded = false;
+
 
     /**
      * ################################################################
@@ -109,23 +111,25 @@ class Ajax
         if ( DEBUG_AJAX_GET ) clog("Ajax.ctor/_GET", $_GET);
 
         if ( isset($_POST) )
-            $this->post = FJ::copyArray($_POST);
+            $this->post = FJ::deepCopy($_POST);
 
         if ( isset($_GET) )
-            $this->get = FJ::copyArray($_GET);
+            $this->get = FJ::deepCopy($_GET);
 
         $this->apiName = $_SERVER["SCRIPT_NAME"];
     }
+
 
     /**
      * Clears status of response.
      */
     public function clear ()
     {
-        $this->data    = array();
+        $this->data    = [];
         $this->success = false;
         $this->mesg    = null;
     }
+
 
     /**
      * Signal that request failed.  Outputs error.
@@ -136,11 +140,12 @@ class Ajax
      */
     public function fail ( $mesg )
     {
-        FJ::error($mesg);
+        Log::error($mesg);
         $this->success = false;
         $this->mesg    = $mesg;
         return $this;
     }
+
 
     /**
      * Gets information for a specific file-to-upload.
@@ -151,12 +156,14 @@ class Ajax
      */
     public function fileInfo ( $fileKey ) { return ($this->hasFiles && isset($_FILES[$fileKey])) ? $_FILES[$fileKey] : false; }
 
+
     /**
      * Gets files-to-upload, if any.
      *
      * @return array|bool - Array of files-to-upload; (false) otherwise).
      */
     public function files () { return $this->hasFiles() ? array_keys($_FILES) : false; }
+
 
     /**
      * Determines if GET contains specified key.
@@ -167,12 +174,14 @@ class Ajax
      */
     private function hasGet ( $key ) { return array_key_exists($key, $this->get); }
 
+
     /**
      * Determines if POST contains files-to-upload.
      *
      * @return bool - (true) if POST contains files-to-upload; (false) otherwise;
      */
     public function hasFiles () { return $this->hasFiles; }
+
 
     /**
      * Determines if POST contains specified key.
@@ -183,6 +192,7 @@ class Ajax
      */
     private function hasPost ( $key ) { return array_key_exists($key, $this->post); }
 
+
     /**
      * Detects if script is called via HTTPS.
      *
@@ -190,12 +200,14 @@ class Ajax
      */
     public function isHTTPS () { return isset($_SERVER['HTTPS']) && $_SERVER['HTTPS']; }
 
+
     /**
      * Detects if script is called via 'localhost' server name.
      *
      * @return bool - (true) if 'localhost'; (false) otherwise.
      */
     public function isLocalhost () { return isset($_SERVER['SERVER_NAME']) && ("localhost" === $_SERVER['SERVER_NAME']); }
+
 
     public function getConnectionID ( $info = false )
     {
@@ -218,6 +230,7 @@ class Ajax
         return $id;
     }
 
+
     /**
      * Converts the response data into an AJAX JSON response.
      *
@@ -225,7 +238,7 @@ class Ajax
      */
     public function json ()
     {
-        $resp = array();
+        $resp = [];
 
         $resp['now']     = $this->at->getWholeMillis();
         $resp['success'] = $this->success;
@@ -237,19 +250,20 @@ class Ajax
             if ( isset($this->data) )
                 $resp['data'] = $this->data;
             else
-                $resp['data'] = array();
+                $resp['data'] = [];
         }
         else
         {
             $resp['error'] = $this->mesg;
         }
 
-        $json = FJ::json_encode($resp);
+        $json = FJ::jsEncode($resp);
 
         if ( DEBUG_AJAX_RESPONSE ) clog("Ajax.json/output", $json);
 
         return $json;
     }
+
 
     /**
      * Gets the current, high-precision, time.
@@ -257,6 +271,7 @@ class Ajax
      * @return AnalTime|null
      */
     public function now () { return $this->at; }
+
 
     /**
      * Send the AJAX response (JSON-encoded), and EXIT script (unrolling callers).
@@ -271,11 +286,15 @@ class Ajax
             $response           = (null == $content) ? $this->json() : $content;
 
             header('Content-Type: ' . $mimeType);
+
+            clog("WTF: response", $response);
+
             echo $response;
         }
 
         exit(); // NOTE - Exit PHP - Immediately terminate execution
     }
+
 
     /**
      * @param string $message
@@ -287,6 +306,7 @@ class Ajax
         $this->fail($message);
         $this->respond($mimeType, $content);
     }
+
 
     /**
      * Send the AJAX response (JSON-encoded), closes the client connection, but keeps running.
@@ -318,25 +338,30 @@ class Ajax
         }
     }
 
+
     /**
      * Set a return value in the 'data' hash.
      *
-     * @param mixed $key - Key
+     * @param mixed $key   - Key
      * @param mixed $value - Value
      */
     public function set ( $key, $value ) { $this->data[strval($key)] = $value; }
 
+
     /**
      * Sets a value in the $_SESSION.
      *
-     * @param string $key - Key to use
+     * @param string $key   - Key to use
      * @param string $value - Value to set
      */
     public function setSession ( $key, $value ) { $_SESSION[$key] = $value; }
 
+
     public function getSession ( $key ) { return array_key_exists($key, $_SESSION) ? $_SESSION[$key] : false; }
 
+
     public function clearSession ( $key ) { if ( array_key_exists($key, $_SESSION) ) unset($_SESSION[$key]); }
+
 
     /**
      * Sets the number of seconds this script is allowed to run.
@@ -344,6 +369,7 @@ class Ajax
      * @param $seconds
      */
     public function setSessionTimeout ( $seconds ) { set_time_limit($seconds); }
+
 
     /**
      * Fail-fast test-and-get of an HTTP GET key.
@@ -365,6 +391,7 @@ class Ajax
         }
         return $val;
     }
+
 
     /**
      * Fail-fast test-and-get of an HTTP POST or GET key.
@@ -393,6 +420,7 @@ class Ajax
         return $val;
     }
 
+
     /**
      * Fail-fast test-and-get of an HTTP POST key.
      *
@@ -413,6 +441,7 @@ class Ajax
         }
         return $val;
     }
+
 
     /**
      * Fail-fast test-and-get of a PHP SESSION key.
@@ -435,6 +464,7 @@ class Ajax
         return $val;
     }
 
+
     /**
      * Test-and-get of an HTTP POST or GET key.
      *
@@ -453,6 +483,7 @@ class Ajax
         return $val;
     }
 
+
     /**
      * Test-and-get of an HTTP GET key.
      *
@@ -461,6 +492,7 @@ class Ajax
      * @return String value if 'key' exists; otherwise, (false)
      */
     public function testGet ( $key ) { return $this->hasGet($key) ? $this->get[$key] : false; }
+
 
     /**
      * Test-and-get of an HTTP POST key.
@@ -471,6 +503,7 @@ class Ajax
      */
     public function testPost ( $key ) { return $this->hasPost($key) ? $this->post[$key] : false; }
 
+
     /**
      * Gets a value in the $_SESSION.
      *
@@ -479,6 +512,7 @@ class Ajax
      * @return mixed
      */
     public function testSession ( $key ) { return isset($_SESSION[$key]) ? $_SESSION[$key] : false; }
+
 
     /**
      * Indicate AJAX call is successful (from the server's POV).

@@ -36,8 +36,29 @@ use \phpseclib\Crypt\AES;
 
 class FJ
 {
-    const FJ_DEFAULT_AES_MODE = "ctr";
+    const FJ_DEFAULT_AES_MODE   = "ctr";
     const FJ_JSON_DETECT_ERRORS = false;
+
+
+    /**
+     * ****************************************************************
+     * Creates a 2nd-level copy of an array.  The references are copied,
+     * but the values themselves are unchanged.
+     *
+     * @param $ar
+     *
+     * @return array
+     * ****************************************************************
+     */
+    public static function deepCopy ( $ar )
+    {
+        $copy = [];
+        foreach ( $ar as $key => $value )
+        {
+            $copy[$key] = $value;
+        }
+        return $copy;
+    }
 
 
     public static function encrypt ( $key, $iv, $plaintext )
@@ -55,6 +76,21 @@ class FJ
         $aes->setKey($key);
         $aes->setIV($iv);
         return $aes->decrypt($ciphertext);
+    }
+
+
+    /**
+     * https://stackoverflow.com/questions/2791998/convert-dashes-to-camelcase-in-php
+     *
+     * @param      $string
+     * @param bool $startWithLower
+     *
+     * @return mixed|string
+     */
+    public static function dashesToCamelCase ( $string, $startWithLower = true )
+    {
+        $str = str_replace(' ', '', ucwords(str_replace('-', ' ', $string)));
+        return $startWithLower ? lcfirst($str) : $str;
     }
 
 
