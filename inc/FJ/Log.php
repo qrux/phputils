@@ -135,17 +135,6 @@ class Log
      */
     public static function dump ()
     {
-//        switch ( func_num_args() )
-//        {
-//            case 2:
-//                clog(func_get_arg(0), func_get_arg(1));
-//                break;
-//
-//            default:
-//                clog(func_get_arg(0));
-//                break;
-//        }
-
         try
         {
             throw new \Exception();
