@@ -27,11 +27,22 @@
  */
 
 
+
 namespace FJ;
 
 
 class Ajax
 {
+    const DEBUG_NUKE                  = false;
+    const DEBUG_AJAX_RESPONSE         = true;
+    const DEBUG_AJAX_RESPONSE_VERBOSE = false;
+    const AJAX_RESPONSE_VERBOSE_LEN   = 2048;
+
+    const MIME_TEXT_PLAIN       = "text/plain";
+    const MIME_APPLICATION_JSON = "application/json";
+
+
+
     /**
      * ************************************************************
      *
@@ -41,18 +52,47 @@ class Ajax
      */
     public static function nukeSession ()
     {
-        if ( isset($_COOKIE[session_name()]) )
-        {
-            setcookie(session_name(), '', time() - 42000, '/');
-        }
-
-        clog("nukeSession - ANTE - COOKIES", $_COOKIE);
-        clog($_COOKIE);
-        clog("nukeSession - POST - COOKIES", $_COOKIE);
+        if ( self::DEBUG_NUKE ) clog("nukeSession - ANTE - COOKIES", $_COOKIE);
 
         $_SESSION = [];
+
+        // If it's desired to kill the session, also delete the session cookie.
+        // Note: This will destroy the session, and not just the session data!
+        if ( ini_get("session.use_cookies") )
+        {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000,
+                      $params["path"], $params["domain"],
+                      $params["secure"], $params["httponly"]
+            );
+        }
+
         session_destroy();
+
+        if ( self::DEBUG_NUKE ) clog("nukeSession - POST - COOKIES", $_COOKIE);
     }
+
+
+
+    public static function isElasticBeanstalkWorkerEnv ()
+    {
+        $userAgent = array_key_exists("HTTP_USER_AGENT", $_SERVER)
+            ? $_SERVER['HTTP_USER_AGENT']
+            : false;
+        $mesgID    = array_key_exists("HTTP_X_AWS_SQSD_MSGID", $_SERVER)
+            ? $_SERVER['HTTP_X_AWS_SQSD_MSGID']
+            : false;
+        $qID       = array_key_exists("HTTP_X_AWS_SQSD_QUEUE", $_SERVER)
+            ? $_SERVER['HTTP_X_AWS_SQSD_QUEUE']
+            : false;
+
+        if ( false === $userAgent || false === $mesgID || false === $qID ) return false;
+
+        $isok = "aws-sqsd/2.4" === $userAgent;
+
+        return $isok;
+    }
+
 
 
     protected $hasFiles  = false;
@@ -68,6 +108,9 @@ class Ajax
 
     protected $apiName      = "?";
     protected $hasResponded = false;
+
+    protected $isElasticBeanstalkWorkerEnv = false;
+
 
 
     /**
@@ -117,7 +160,14 @@ class Ajax
             $this->get = FJ::deepCopy($_GET);
 
         $this->apiName = $_SERVER["SCRIPT_NAME"];
+
+        $this->isElasticBeanstalkWorkerEnv = self::isElasticBeanstalkWorkerEnv();
     }
+
+
+
+    public function isAWSWorkerEnv () { return $this->isElasticBeanstalkWorkerEnv; }
+
 
 
     /**
@@ -129,6 +179,7 @@ class Ajax
         $this->success = false;
         $this->mesg    = null;
     }
+
 
 
     /**
@@ -147,6 +198,25 @@ class Ajax
     }
 
 
+
+    const HTTP_OK                    = 200;
+    const HTTP_ERROR_GENERIC         = 500;
+    const HTTP_ERROR_NOT_IMPLEMENTED = 501;
+
+
+
+    public function http ( $httpStatusCode, $mesg )
+    {
+        Log::warn("(HTTP $httpStatusCode): $mesg");
+        http_response_code($httpStatusCode);
+
+        flush();
+        ob_flush();
+        exit();
+    }
+
+
+
     /**
      * Gets information for a specific file-to-upload.
      *
@@ -157,12 +227,14 @@ class Ajax
     public function fileInfo ( $fileKey ) { return ($this->hasFiles && isset($_FILES[$fileKey])) ? $_FILES[$fileKey] : false; }
 
 
+
     /**
      * Gets files-to-upload, if any.
      *
      * @return array|bool - Array of files-to-upload; (false) otherwise).
      */
     public function files () { return $this->hasFiles() ? array_keys($_FILES) : false; }
+
 
 
     /**
@@ -175,12 +247,14 @@ class Ajax
     private function hasGet ( $key ) { return array_key_exists($key, $this->get); }
 
 
+
     /**
      * Determines if POST contains files-to-upload.
      *
      * @return bool - (true) if POST contains files-to-upload; (false) otherwise;
      */
     public function hasFiles () { return $this->hasFiles; }
+
 
 
     /**
@@ -193,6 +267,7 @@ class Ajax
     private function hasPost ( $key ) { return array_key_exists($key, $this->post); }
 
 
+
     /**
      * Detects if script is called via HTTPS.
      *
@@ -201,12 +276,14 @@ class Ajax
     public function isHTTPS () { return isset($_SERVER['HTTPS']) && $_SERVER['HTTPS']; }
 
 
+
     /**
      * Detects if script is called via 'localhost' server name.
      *
      * @return bool - (true) if 'localhost'; (false) otherwise.
      */
     public function isLocalhost () { return isset($_SERVER['SERVER_NAME']) && ("localhost" === $_SERVER['SERVER_NAME']); }
+
 
 
     public function getConnectionID ( $info = false )
@@ -229,6 +306,7 @@ class Ajax
         $id = $this->at->getWholeMicros() . "_" . $infoString . "_" . $tuple;
         return $id;
     }
+
 
 
     /**
@@ -265,6 +343,7 @@ class Ajax
     }
 
 
+
     /**
      * Gets the current, high-precision, time.
      *
@@ -273,27 +352,21 @@ class Ajax
     public function now () { return $this->at; }
 
 
+
     /**
      * Send the AJAX response (JSON-encoded), and EXIT script (unrolling callers).
      *
      * NOTE - Aborts callers!
+     *
+     * @param string $contentType - MIME Type
+     * @param null   $content
      */
-    public function respond ( $mimeType = "application/json", $content = null )
+    public function respond ( $contentType = self::MIME_APPLICATION_JSON, $content = null )
     {
-        if ( !$this->hasResponded )
-        {
-            $this->hasResponded = true;
-            $response           = (null == $content) ? $this->json() : $content;
-
-            header('Content-Type: ' . $mimeType);
-
-            clog("WTF: response", $response);
-
-            echo $response;
-        }
-
-        exit(); // NOTE - Exit PHP - Immediately terminate execution
+        $response = (null == $content) ? $this->json() : $content;
+        $this->raw($contentType, $response);
     }
+
 
 
     /**
@@ -306,6 +379,7 @@ class Ajax
         $this->fail($message);
         $this->respond($mimeType, $content);
     }
+
 
 
     /**
@@ -339,13 +413,21 @@ class Ajax
     }
 
 
+
     /**
      * Set a return value in the 'data' hash.
      *
      * @param mixed $key   - Key
      * @param mixed $value - Value
+     *
+     * @return - Ajax object for builder pattern.
      */
-    public function set ( $key, $value ) { $this->data[strval($key)] = $value; }
+    public function set ( $key, $value )
+    {
+        $this->data[strval($key)] = $value;
+        return $this;
+    }
+
 
 
     /**
@@ -357,10 +439,17 @@ class Ajax
     public function setSession ( $key, $value ) { $_SESSION[$key] = $value; }
 
 
+
+    public function hasSession ( $key ) { return array_key_exists($key, $_SESSION); }
+
+
+
     public function getSession ( $key ) { return array_key_exists($key, $_SESSION) ? $_SESSION[$key] : false; }
 
 
+
     public function clearSession ( $key ) { if ( array_key_exists($key, $_SESSION) ) unset($_SESSION[$key]); }
+
 
 
     /**
@@ -369,6 +458,7 @@ class Ajax
      * @param $seconds
      */
     public function setSessionTimeout ( $seconds ) { set_time_limit($seconds); }
+
 
 
     /**
@@ -391,6 +481,7 @@ class Ajax
         }
         return $val;
     }
+
 
 
     /**
@@ -421,6 +512,7 @@ class Ajax
     }
 
 
+
     /**
      * Fail-fast test-and-get of an HTTP POST key.
      *
@@ -441,6 +533,7 @@ class Ajax
         }
         return $val;
     }
+
 
 
     /**
@@ -465,12 +558,13 @@ class Ajax
     }
 
 
+
     /**
      * Test-and-get of an HTTP POST or GET key.
      *
      * @param string $key
      *
-     * @return string value of 'key' exists; otherwise, (false)
+     * @return string|bool - value of 'key' exists; otherwise, (false)
      */
     public function testBoth ( $key )
     {
@@ -484,6 +578,7 @@ class Ajax
     }
 
 
+
     /**
      * Test-and-get of an HTTP GET key.
      *
@@ -492,6 +587,7 @@ class Ajax
      * @return String value if 'key' exists; otherwise, (false)
      */
     public function testGet ( $key ) { return $this->hasGet($key) ? $this->get[$key] : false; }
+
 
 
     /**
@@ -504,6 +600,7 @@ class Ajax
     public function testPost ( $key ) { return $this->hasPost($key) ? $this->post[$key] : false; }
 
 
+
     /**
      * Gets a value in the $_SESSION.
      *
@@ -512,6 +609,7 @@ class Ajax
      * @return mixed
      */
     public function testSession ( $key ) { return isset($_SESSION[$key]) ? $_SESSION[$key] : false; }
+
 
 
     /**
@@ -526,5 +624,36 @@ class Ajax
         $this->success = true;
         $this->mesg    = $mesg;
         return $this;
+    }
+
+
+
+    public function raw ( $contentType, $content )
+    {
+        if ( !$this->hasResponded )
+        {
+            $this->hasResponded = true;
+
+            $contenTypeString = 'Content-Type: ' . $contentType;
+
+            header($contenTypeString);
+
+            clog("Content-Type (string)", $contenTypeString);
+
+            if ( self::DEBUG_AJAX_RESPONSE )
+            {
+                $displayMesg = self::DEBUG_AJAX_RESPONSE_VERBOSE
+                    ? $content
+                    : FJ::clipString($content, self::AJAX_RESPONSE_VERBOSE_LEN);
+
+                clog("AJAX response", $displayMesg);
+            }
+
+            echo "$content" . "\n";
+            flush();
+            ob_flush();
+        }
+
+        exit(); // NOTE - Exit PHP - Immediately terminate execution
     }
 }
