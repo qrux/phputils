@@ -38,7 +38,7 @@ class Log
     const CLOG_DEBUG_TIMING            = false;
     const CLOG_DEBUG_ERROR_LOG_DEFAULT = false;
     const CLOG_FOPEN_MODE              = "a+";
-    const CLOG_PASSWORD_PATTERN        = "/(passw[o]*[r]*d|scramble)/i";
+    const CLOG_PASSWORD_PATTERN        = "/(passw[o]*[r]*d|scramble|secret)/i";
 
     // CLOG options.
     const CLOG_VERSION_LITE         = 1;
@@ -50,7 +50,8 @@ class Log
     const CLOG_IGNORE_DEPTH         = 0;
     const CLOG_OBEY_DEPTH           = 1;
     const CLOG_TIMING               = false;
-    const CLOG_REMOTE               = true;
+    const CLOG_REMOTE               = false;
+    const CLOG_SESSION              = true;
     const CLOG_ARRAY_KEY_FANCY      = true;
     const CLOG_DEPTH_INDENT         = 4;
 
@@ -69,7 +70,7 @@ class Log
     const TEXT_COLOR_ORANGE = "\033[0;33m";
 
     const TEXT_COLOR_BG_RED    = "\033[41m";
-    const TEXT_COLOR_BG_YELLOW = "\033[43m";
+    const TEXT_COLOR_BG_YELLOW = "\033[30;43m";
 
     const TEXT_COLOR_SUFFIX    = "\033[0m";
     const TEXT_COLOR_UL_CYAN   = "\033[4;36m";
@@ -91,7 +92,8 @@ class Log
     /**
      * @var resource
      */
-    private static $logfp = false;
+    private static $customPrefix = false;
+    private static $logfp        = false;
 
 
     public static function color ( $color, $str )
@@ -200,8 +202,8 @@ class Log
     private static function b2s ( $boolVal )
     {
         return $boolVal
-            ? self::color(self::TEXT_COLOR_GREEN, "true")
-            : self::color(self::TEXT_COLOR_RED, "FALSE");
+            ? self::color(self::TEXT_COLOR_UL_GREEN, "true")
+            : self::color(self::TEXT_COLOR_UL_RED, "FALSE");
     }
 
 
@@ -252,7 +254,7 @@ class Log
                     $data  = var_export($item, true);
                     $color = self::TEXT_COLOR_RED;
 
-                    $str = FJ::json_encode($data);
+                    $str = FJ::jsEncode($data);
 
                     $type = self::color(self::TEXT_COLOR_YELLOW, "<$type>");
                     $str  = self::color($color, $str);
@@ -363,10 +365,19 @@ class Log
             }
             else
             {
-                $val = self::obfuscatePasswords($key, $val);
-
-                $post = self::color(self::TEXT_COLOR_GREEN, $val);
-                $str  = $pre . $post;
+                if ( is_bool($val) )
+                {
+                    $color = $val ? self::TEXT_COLOR_UL_GREEN : self::TEXT_COLOR_UL_RED;
+                    $v     = $val ? 'true' : 'FALSE';
+                    $v     = self::color($color, $v);
+                    $str   = $pre . $v;
+                }
+                else
+                {
+                    $val  = self::obfuscatePasswords($key, $val);
+                    $post = self::color(self::TEXT_COLOR_GREEN, $val);
+                    $str  = $pre . $post;
+                }
 
                 self::log($prefix . $indent . $str);
             }
@@ -477,7 +488,7 @@ class Log
         if ( self::CLOG_REMOTE && isWeb() )
         {
             //$remote = $_SERVER['REMOTE_ADDR'] . ":" . $_SERVER['REMOTE_PORT'] . " ";
-            $remote = $_SERVER['REMOTE_ADDR'] . ":" . $_SERVER['REMOTE_PORT'] . "/" . $_SERVER['REQUEST_METHOD'] . " ";
+            //$remote = $_SERVER['REMOTE_ADDR'] . ":" . $_SERVER['REMOTE_PORT'] . "/" . $_SERVER['REQUEST_METHOD'] . " ";
             $remote = $_SERVER['REMOTE_ADDR'] . "/" . $_SERVER['REQUEST_METHOD'] . " ";
             //$remote = self::color(self::TEXT_COLOR_YELLOW, $remote);
         }
@@ -578,6 +589,11 @@ class Log
 
             $mesgCustom = self::shouldColor() ? $rfc : "";
 
+            $sessID = session_id();
+            $sessID = substr($sessID, 0, 8);
+
+            $mesgCustom .= " " . $sessID;
+
             $nowMillis         = $now->getWholeMillis();
             $reqTimeSec        = $_SERVER['REQUEST_TIME_FLOAT'];
             $reqTimeMillis     = $reqTimeSec * 1000;
@@ -602,9 +618,13 @@ class Log
             $diffInfo   = self::color($color, $diffString);
             $mesgCustom .= " $diffInfo";
 
-            $self       = self::color(self::TEXT_COLOR_GREEN, $_SERVER['PHP_SELF']);
-            $mesgCustom .= " $self";
-            $mesgCustom .= " $mesg";
+            $self = (false !== self::$customPrefix)
+                ? self::$customPrefix
+                : $_SERVER['PHP_SELF'];
+
+            $self = self::color(self::TEXT_COLOR_GREEN, $self);
+
+            $mesgCustom .= " $self $mesg";
 
             if ( self::shouldColor() ) $mesgCustom .= "\n";
         }
@@ -615,6 +635,15 @@ class Log
 
         self::_outputLog($mesgCustom);
     }
+
+
+    public static function setCustomPrefix ( $prefix ) { self::$customPrefix = $prefix; }
+
+
+    public static function getCustomPrefix () { return self::$customPrefix; }
+
+
+    public static function resetCustomPrefix () { self::$customPrefix = false; }
 
 
     private static function _outputLog ( $mesg )
