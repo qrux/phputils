@@ -174,6 +174,13 @@ class AnalTime extends RFC3339
     }
 
 
+    /**
+     * @param $timespec
+     * @param $tz
+     *
+     * @return string|null
+     * @throws Exception
+     */
     private static function parse ( $timespec, $tz )
     {
         if ( null === $timespec ) return null;
