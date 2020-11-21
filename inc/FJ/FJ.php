@@ -27,7 +27,9 @@
  */
 
 
+
 namespace FJ;
+
 
 
 use \phpseclib\Crypt\AES;
@@ -38,6 +40,88 @@ class FJ
 {
     const FJ_DEFAULT_AES_MODE   = "ctr";
     const FJ_JSON_DETECT_ERRORS = false;
+
+
+
+    public static function totime () { return date("Ymd_his"); }
+    public static function todate () { return date("Ymd"); }
+
+
+
+    /**
+     * ****************************************************************
+     * Base64url-encodes the input.
+     *
+     * @param $s string - Input (plain)
+     *
+     * @return string - base64url-encoding of input.
+     * ****************************************************************
+     */
+    public static function b64url_encode ( $s )
+    {
+        if ( false === isset($s) || null === $s || 0 == strlen($s) )
+        {
+            return null;
+        }
+
+        /*
+        * Do stuff!
+        */
+        $b64 = base64_encode($s);
+        //$b64u = rtrim( strtr( $b64, '+/', '-_' ), '=' );
+        $b64u = strtr($b64, '+/', '-_');
+
+        return $b64u;
+    }
+
+
+
+    /**
+     * ****************************************************************
+     * Base64url-decodes the input.
+     *
+     * @param $s string - Input (base64url-encoded).
+     *
+     * @return string - base64url-decoding of input.
+     * ****************************************************************
+     */
+    public static function b64url_decode ( $s )
+    {
+        if ( false === isset($s) || null === $s || 0 == strlen($s) )
+        {
+            return null;
+        }
+
+        //return base64_decode( str_pad( strtr( $s, '-_', '+/' ), strlen( $s ) % 4, '=', STR_PAD_RIGHT ) );
+        return base64_decode(strtr($s, '-_', '+/'));
+    }
+
+
+
+    public static function stripNon7BitCleanASCII ( $string )
+    {
+        return preg_replace('/[\x00-\x1F\x7F-\xFF]/', '', $string);
+    }
+
+
+
+    public static function stripSpaces ( $string )
+    {
+        return preg_replace("/[^[:alnum:]]/", "", $string);
+    }
+
+
+    public static function stripLower ( $string )
+    {
+        return strtolower(self::stripSpaces($string));
+    }
+
+
+    public static function spacesToDashes ( $string )
+    {
+        return preg_replace("/[[:space:]]/", "-", $string);
+    }
+
 
 
     /**
@@ -61,6 +145,15 @@ class FJ
     }
 
 
+
+    public static function hash ( $str, $substrLen = 0, $algo = "SHA256" )
+    {
+        $hash = hash($algo, $str);
+        return (0 < $substrLen) ? substr($hash, 0, $substrLen) : $hash;
+    }
+
+
+
     public static function encrypt ( $key, $iv, $plaintext )
     {
         $aes = new AES(self::FJ_DEFAULT_AES_MODE);
@@ -70,6 +163,7 @@ class FJ
     }
 
 
+
     public static function decrypt ( $key, $iv, $ciphertext )
     {
         $aes = new AES(self::FJ_DEFAULT_AES_MODE);
@@ -77,6 +171,7 @@ class FJ
         $aes->setIV($iv);
         return $aes->decrypt($ciphertext);
     }
+
 
 
     /**
@@ -94,6 +189,50 @@ class FJ
     }
 
 
+
+    /**
+     * Takes a string of the form 'abcxyz' and converts it to 'ab...yz'.
+     *
+     * @param string $string    - Input string.
+     * @param int    $len       - Total length to clip to (including delimiter).
+     * @param string $delimiter - Combining string to split front- and back-halves.
+     *
+     * @return string - Either a clipped string 'ab...yz' or the original string.
+     */
+    public static function clipString ( $string, $len, $delimiter = "...->..." )
+    {
+        $l = strlen($string);
+        if ( $l < $len ) return $string;
+
+//        clog("clipping!");
+
+        $dlen = strlen($delimiter);
+
+        $slen      = $len - $dlen;
+        $half      = $slen / 2;
+        $fh        = floor($half);
+        $otherHalf = 0 === ($half - $fh) ? $fh : ($fh + 1);
+        $end       = $l - $otherHalf;
+
+//        clog("dlen", $dlen);
+//        clog("slen", $slen);
+//        clog("half", $half);
+//        clog("fh", $fh);
+//        clog("o-ha", $otherHalf);
+//        clog("dlen", $dlen);
+//        clog("end", $end);
+
+        $front = substr($string, 0, $half);
+        $back  = substr($string, $end);
+
+//        clog("front", $front);
+//        clog("back", $back);
+
+        return $front . $delimiter . $back;
+    }
+
+
+
     public static function jsEncode ( $obj )
     {
         $json = json_encode($obj);
@@ -104,6 +243,7 @@ class FJ
     }
 
 
+
     public static function jsDecode ( $json, $useAssoc = true )
     {
         $string = json_decode($json, $useAssoc);
@@ -112,6 +252,7 @@ class FJ
 
         return $string;
     }
+
 
 
     private static function detectJSONError ( $input, $output, $isEncode = true )
@@ -149,6 +290,7 @@ class FJ
         if ( null !== $jsonErrorMessage )
             clog("-----=====[ JSON encoding error $jsonErrorMessage ]=====-----");
     }
+
 
 
     public static function randBytes ( $length )
