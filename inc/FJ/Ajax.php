@@ -166,6 +166,14 @@ class Ajax
 
 
 
+    public function dump ()
+    {
+        clog("Ajax/POST", $_POST);
+        clog("Ajax/GET", $_GET);
+    }
+
+
+
     public function isAWSWorkerEnv () { return $this->isElasticBeanstalkWorkerEnv; }
 
 
