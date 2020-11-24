@@ -82,10 +82,11 @@ class Log
 
 
     const CLOG_ALT_FILE_DIRS = [
-        "/srv/www/logs",
-        "/var/log/apache2",
-        "/var/log/apache",
-        "/var/log/httpd",
+        "/Users/srv/www/logs",  // macOS root filesystem is read-only now...so moving to /Users
+        "/srv/www/logs",        // Orig dev
+        "/var/log/apache2",     // New apache
+        "/var/log/apache",      // Old apache
+        "/var/log/httpd",       // Alt apache
     ];
 
 
@@ -508,6 +509,8 @@ class Log
     {
         if ( isCLI() )
         {
+            error_log("IS-CLI; aborting!");
+
             self::$logfp = false;
             return;
         }
@@ -516,7 +519,7 @@ class Log
 
         $errorLogPath = ini_get(self::CLOG_ERROR_LOG_CONSTANT);
 
-        //error_log("Log - error-log-path: $errorLogPath");
+        if ( self::CLOG_DEBUG_ERROR_LOG_DEFAULT ) error_log("Log - error-log-path: $errorLogPath");
 
         $errorLogDir = dirname($errorLogPath);
 
@@ -524,7 +527,7 @@ class Log
         {
             $logdir = pathinfo(realpath("/proc/" . getmypid() . "/fd/2"), PATHINFO_DIRNAME);
 
-            //error_log("Log - log-dir: $logdir");
+            if ( self::CLOG_DEBUG_ERROR_LOG_DEFAULT ) error_log("Log - log-dir: $logdir");
 
             if ( !$logdir || 0 == strlen($logdir) )
             {
@@ -541,7 +544,7 @@ class Log
             $clogFilePath = $errorLogDir . DIRECTORY_SEPARATOR . self::CLOG_FILENAME;
         }
 
-        //error_log("Trying to open clog file @ $clogFilePath...");
+        if ( self::CLOG_DEBUG_ERROR_LOG_DEFAULT ) error_log("Trying to open clog file @ $clogFilePath...");
 
         self::$logfp = @fopen($clogFilePath, self::CLOG_FOPEN_MODE);
     }
@@ -555,12 +558,12 @@ class Log
         {
             $path = $dir . DIRECTORY_SEPARATOR . self::CLOG_FILENAME;
 
-            //error_log("Log - Trying to open [ $path ] ...");
+            if ( self::CLOG_DEBUG_ERROR_LOG_DEFAULT ) error_log("Log - Trying to open [ $path ] ...");
 
             $fp = @fopen($path, self::CLOG_FOPEN_MODE);
             if ( false !== $fp )
             {
-                //error_log("Log - WIN - opened path [ $path ].");
+                if ( self::CLOG_DEBUG_ERROR_LOG_DEFAULT ) error_log("Log - WIN - opened path [ $path ].");
 
                 self::$logfp = $fp;
                 return;

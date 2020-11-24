@@ -15,7 +15,7 @@ use Exception;
 
 abstract class ProviderFactory
 {
-    const DEBUG_CONFIG_INFO     = true;
+    const DEBUG_CONFIG_INFO     = false;
     const DEBUG_DB_CONN         = true;
     const DEBUG_DB_CONN_VERBOSE = false;
 
@@ -54,7 +54,8 @@ abstract class ProviderFactory
     const DB_USER_ARRAY_KEY = "db_user_";
     const DB_PASS_ARRAY_KEY = "db_password_";
 
-    const DEFAULT_LOCAL_PATH_PREFIX = "/srv/";
+    const DEFAULT_LOCAL_PATH_PREFIX        = "/srv/";
+    const DEFAULT_LOCAL_PATH_PREFIX_BACKUP = "/Users/srv/";
 
     const CONFIG_TYPE_BASE      = "config";
     const FILE_CONFIG           = self::CONFIG_TYPE_BASE;
@@ -78,9 +79,34 @@ abstract class ProviderFactory
 
 
 
+    /**
+     * ProviderFactory constructor.
+     *
+     * @param string $localPathPrefix
+     *
+     * @throws Exception
+     */
     function __construct ( $localPathPrefix = self::DEFAULT_LOCAL_PATH_PREFIX )
     {
-        $this->localPathPrefix = $localPathPrefix;
+        if ( file_exists($localPathPrefix) && is_dir($localPathPrefix) )
+        {
+            $this->localPathPrefix = $localPathPrefix;
+        }
+        else
+        {
+            $localPathPrefix = self::DEFAULT_LOCAL_PATH_PREFIX_BACKUP;
+
+            if ( file_exists($localPathPrefix) && is_dir($localPathPrefix) )
+            {
+                $this->localPathPrefix = $localPathPrefix;
+            }
+            else {
+                //
+                // DANGER - There are no local files or config.
+                //
+                throw new Exception();
+            }
+        }
     }
 
 
@@ -257,18 +283,8 @@ abstract class ProviderFactory
      */
     private function loadLocalConfig ()
     {
-        $configFilePath = $this->getConfigFilePath();
-        $authFilePath   = $this->getAuthFilePath();
-
-        clog("config file path", $configFilePath);
-        clog("  auth file path", $authFilePath);
-
-        $conf = self::loadConfigFile($configFilePath);
-        $auth = self::loadConfigFile($authFilePath);
-
-        clog("conf", $conf);
-        clog("auth", $auth);
-
+        $conf   = self::loadConfigFile($this->getConfigFilePath());
+        $auth   = self::loadConfigFile($this->getAuthFilePath());
         $params = array_merge($conf, $auth);
 
         return $params;
@@ -285,25 +301,11 @@ abstract class ProviderFactory
         }
 
         $json = file_get_contents($file);
-        $json = trim($json);
 
-        if ( self::DEBUG_CONFIG_INFO && self::doesNotLookLikeAuthFile($file) ) clog($file . "(json)", $json);
+        if ( self::DEBUG_CONFIG_INFO && self::FJ_CREDS_FILE !== $file ) clog("config(json)", $json);
 
-        $conf = FJ::jsDecode($json);
-
-        if ( self::DEBUG_CONFIG_INFO ) clog($file . "(obj)", $conf);
-
-        return $conf;
+        return FJ::jsDecode($json);
     }
-
-
-
-    private static function looksLikeAuthFile ( $file )
-    {
-        $sub = "auth";
-        return false !== strstr($file, $sub);
-    }
-    private static function doesNotLookLikeAuthFile ( $file ) { return !self::looksLikeAuthFile($file); }
 
 
 

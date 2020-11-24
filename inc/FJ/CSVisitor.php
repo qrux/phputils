@@ -33,6 +33,17 @@ namespace FJ;
 interface CSVisitor
 {
     /**
+     * NOTE - "Main" method, called for each CSV line tokenized.
+     *
+     * @param int      $lineIndex - Index of line, inclusive of all lines.
+     * @param string[] $tokens    - Array of strings.
+     *
+     * @return mixed
+     */
+    function parse ( $lineIndex, $tokens );
+
+
+    /**
      * @param $lineIndex
      *
      * @return mixed
@@ -47,17 +58,6 @@ interface CSVisitor
      * @return mixed
      */
     function parseComment ( $lineIndex, $tokens );
-
-
-    /**
-     * NOTE - "Main" method, called for each CSV line tokenized.
-     *
-     * @param int      $lineIndex - Index of line, inclusive of all lines.
-     * @param string[] $tokens    - Array of strings.
-     *
-     * @return mixed
-     */
-    function parse ( $lineIndex, $tokens );
 
 
     /**

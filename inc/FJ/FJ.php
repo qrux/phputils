@@ -244,6 +244,17 @@ class FJ
 
 
 
+    public static function jsPrettyEncode ( $obj )
+    {
+        $json = json_encode($obj, JSON_PRETTY_PRINT);
+
+        if ( self::FJ_JSON_DETECT_ERRORS ) self::detectJSONError($obj, $json, true);
+
+        return $json;
+    }
+
+
+
     public static function jsDecode ( $json, $useAssoc = true )
     {
         $string = json_decode($json, $useAssoc);
