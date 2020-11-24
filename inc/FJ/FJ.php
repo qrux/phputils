@@ -174,6 +174,24 @@ class FJ
 
 
 
+    public static function endsWith ( $needle, $haystack )
+    {
+        $len = strlen($needle);
+        if ( 0 == $len ) return true;
+
+        return $needle === substr($haystack, -$len);
+    }
+
+
+
+    public static function startsWith ( $needle, $haystack )
+    {
+        $len = strlen($needle);
+        return $needle === substr($haystack, 0, $len);
+    }
+
+
+
     /**
      * https://stackoverflow.com/questions/2791998/convert-dashes-to-camelcase-in-php
      *
