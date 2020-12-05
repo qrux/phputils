@@ -1,0 +1,117 @@
+#! /usr/bin/php
+<?php
+/**
+ * Created by JetBrains PhpStorm.
+ * Date: 12/5/21
+ * Time: 1:14 PM
+ *
+ * Copyright (c) 2020 Version2
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
+
+
+require_once(__DIR__ . "/../../inc/fj-autoloader.php");
+
+
+
+use FJ\ProviderFactoryBase;
+use \FJ\FJ;
+use \FJ\Log;
+use function \FJ\clog;
+use function \FJ\cclog;
+
+
+
+class ProviderFactoryTest extends ProviderFactoryBase
+{
+    /**
+     * @return string - Sets the "name" of the "app", the intent of which
+     *                is just to give a unique prefix to the files and dirs.
+     */
+    public function getAppName ()
+    {
+        return "test";
+    }
+
+
+
+    /**
+     * @return array - Returns the "default" configuration parameters,
+     *               for when the cloud configuration should be used.
+     *               Typically, the cloud config is used in prod, and the
+     *               local config used for dev.
+     */
+    protected function setAppDefaults ()
+    {
+        return [
+            "aws_region"  => "eu-west-1",
+            "aws_version" => "latest",
+
+            "auth_provider" => "cloud",
+            "auth_bucket"   => "testprod",
+            "auth_key"      => "test-users.js",
+
+            "file_provider" => "cloud",
+            "db_provider"   => "cloud",
+        ];
+    }
+}
+
+
+
+/**
+ * @param $argc
+ * @param $argv
+ *
+ * @return int
+ */
+function main ( $argc, $argv )
+{
+    $factory = new ProviderFactoryTest();
+
+    $factory = new ProviderFactoryTest("/Users/srv");
+
+    return 0;
+}
+
+
+
+/*
+ * ########################################################################
+ * ########################################################################
+ * ########################################################################
+ * ########################################################################
+ * ########################################################################
+ *
+ * NOTE - CLI Entry Point!
+ *
+ * ########################################################################
+ * ########################################################################
+ * ########################################################################
+ * ########################################################################
+ * ########################################################################
+ */
+main($argc, $argv);
