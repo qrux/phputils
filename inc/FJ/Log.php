@@ -27,7 +27,9 @@
  */
 
 
+
 namespace FJ;
+
 
 
 class Log
@@ -509,7 +511,7 @@ class Log
     {
         if ( isCLI() )
         {
-            error_log("IS-CLI; aborting!");
+            if ( self::CLOG_DEBUG_ERROR_LOG_DEFAULT ) error_log("IS-CLI; aborting!");
 
             self::$logfp = false;
             return;
