@@ -32,7 +32,7 @@
  */
 
 
-require_once(__DIR__ . "/../../inc/autoloader.php");
+require_once(__DIR__ . "/../../inc/fj-autoloader.php");
 
 //require_once(__DIR__ . "/../../inc/phpseclib/bootstrap.php");
 
