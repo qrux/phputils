@@ -13,7 +13,14 @@ use Exception;
 
 
 
-abstract class ProviderFactory
+/**
+ * Class ProviderFactory
+ *
+ * Stateless ProviderFactory.
+ *
+ * @package FJ
+ */
+abstract class ProviderFactoryImpl
 {
     const DEBUG_CONFIG_INFO     = false;
     const DEBUG_DB_CONN         = true;
@@ -56,6 +63,11 @@ abstract class ProviderFactory
 
     const DEFAULT_LOCAL_PATH_PREFIX        = "/srv/";
     const DEFAULT_LOCAL_PATH_PREFIX_BACKUP = "/Users/srv/";
+    const DEFAULT_LOCAL_PATH_PREFIX_DIRS   = [
+        "/Volumes/ici-data/",
+        "/Users/srv/",
+        "/srv/",
+    ];
 
     const CONFIG_TYPE_BASE      = "config";
     const FILE_CONFIG           = self::CONFIG_TYPE_BASE;
@@ -82,31 +94,51 @@ abstract class ProviderFactory
     /**
      * ProviderFactory constructor.
      *
+     * 3 Possible options:
+     *
+     *   - Nothing passed in (assume cloud).
+     *   - Nothing passed in (assume local if available).
+     *   - Local FS dir passed in.
+     *
+     * How does this even work??
+     *
+     * I guess we're getting lucky because /srv exists on the ElasticBeanstalk EC2 instances...
+     *
      * @param string $localPathPrefix
      *
      * @throws Exception
      */
-    function __construct ( $localPathPrefix = self::DEFAULT_LOCAL_PATH_PREFIX )
+    function __construct ( $localPathPrefix = false )
     {
-        if ( file_exists($localPathPrefix) && is_dir($localPathPrefix) )
-        {
-            $this->localPathPrefix = $localPathPrefix;
-        }
-        else
-        {
-            $localPathPrefix = self::DEFAULT_LOCAL_PATH_PREFIX_BACKUP;
+        // NOTE - This entire thing is lazy-eval.  Don't throw an Exception here.
 
-            if ( file_exists($localPathPrefix) && is_dir($localPathPrefix) )
-            {
-                $this->localPathPrefix = $localPathPrefix;
-            }
-            else {
-                //
-                // DANGER - There are no local files or config.
-                //
-                throw new Exception();
-            }
-        }
+        $this->localPathPrefix = $localPathPrefix;
+
+//        if ( false === $localPathPrefix )
+//        {
+//            $this->localPathPrefix = self::DEFAULT_LOCAL_PATH_PREFIX_DIRS[0];
+//        }
+//
+//        if ( file_exists($localPathPrefix) && is_dir($localPathPrefix) )
+//        {
+//            $this->localPathPrefix = $localPathPrefix;
+//        }
+//        else
+//        {
+//            $localPathPrefix = self::DEFAULT_LOCAL_PATH_PREFIX_BACKUP;
+//
+//            if ( file_exists($localPathPrefix) && is_dir($localPathPrefix) )
+//            {
+//                $this->localPathPrefix = $localPathPrefix;
+//            }
+//            else
+//            {
+//                //
+//                // DANGER - There are no local files or config.
+//                //
+//                throw new Exception();
+//            }
+//        }
     }
 
 
@@ -117,6 +149,19 @@ abstract class ProviderFactory
             ? $this->loadLocalConfig()
             : $this->setConfigDefaults();
     }
+
+
+
+    private function hasLocalConfig ()
+    {
+        return file_exists($this->getConfigFilePath());
+    }
+
+
+
+    private function getConfigFilePath () { return $this->getPathPrefix(self::PATH_COMPONENT_CONFIG) . $this->getPathFilename(self::FILE_CONFIG); }
+    private function getPathPrefix ( $component ) { return $this->localPathPrefix . $this->getAppName() . $component; }
+    private function getPathFilename ( $file ) { return $this->getAppName() . "-" . $file . ".js"; }
 
 
 
@@ -182,17 +227,31 @@ abstract class ProviderFactory
 
 
 
-    private function getConfigFilePath () { return $this->getPathPrefix(self::PATH_COMPONENT_CONFIG) . $this->getPathFilename(self::FILE_CONFIG); }
     private function getAuthFileName () { return $this->getPathFilename(self::FILE_CREDS); }
     private function getAuthFilePath () { return $this->getPathPrefix(self::PATH_COMPONENT_CREDS) . $this->getAuthFileName(); }
-    private function getPathPrefix ( $component ) { return $this->localPathPrefix . $this->getAppName() . $component; }
-    private function getPathFilename ( $file ) { return $this->getAppName() . "-" . $file . ".js"; }
 
 
 
-    private function hasLocalConfig ()
+    private function getPathPrefixes ( $component )
     {
-        return file_exists($this->getConfigFilePath());
+        if ( false !== $this->localPathPrefix )
+        {
+            // We were given a local path prefix.
+            // Look for config files there.
+
+            throw new Exception();
+        }
+
+        return $this->localPathPrefix . $this->getAppName() . $component;
+    }
+
+
+
+    private function getConfigFilePaths ()
+    {
+        $prefixed = $this->getPathPrefixes(self::PATH_COMPONENT_CONFIG);
+
+        $path = $this->getPathPrefix(self::PATH_COMPONENT_CONFIG) . $this->getPathFilename(self::FILE_CONFIG);
     }
 
 
