@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2012-2019 Troy Wu
+ * Copyright (c) 2012-2020 Troy Wu
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,13 @@
  */
 
 
+
 namespace FJ;
+
+
+
+use Exception;
+
 
 
 class CSV
