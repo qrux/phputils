@@ -49,6 +49,7 @@ class CSV
 
     private $filepath;
     private $delim;
+    private $columns;
 
 
     public function __construct ( $filepath, $delim = self::CSV_DELIM_COMMA )
@@ -191,6 +192,54 @@ class CSV
             else
             {
                 $visitor->parse($lineIndex, $tokens);
+            }
+
+            $visitor->post($lineIndex);
+        }
+
+        fclose($csv);
+
+        $visitor->finish();
+    }
+
+
+
+    /**
+     * @param $visitor CSVisitor - Visits each line in the CSV, tokenized by fgetcsv().
+     *
+     * @throws Exception
+     */
+    public function readWithHeaderRow ( $visitor )
+    {
+        $csv = fopen($this->filepath, "r");
+
+        if ( false === $csv )
+        {
+            clog("File {$csv} could not be opened for reading; aborting.");
+            throw new Exception("CSV could not open {$csv}.");
+        }
+
+        clog("about to read file...");
+
+
+        $firstLineTokens = fgetcsv($csv); // Assume first line has column names
+        $this->columns   = $this->stripBOMHeader($firstLineTokens); // Excel bullshit.
+
+        $lineIndex = -1;
+
+        while ( false !== ($tokens = fgetcsv($csv, 0, $this->delim)) )
+        {
+            ++$lineIndex;
+
+            $visitor->ante($lineIndex);
+
+            if ( $this->isCommentLine($tokens) )
+            {
+                $visitor->parseComment($lineIndex, $tokens);
+            }
+            else
+            {
+                $visitor->parse($lineIndex, $tokens, $this->columns);
             }
 
             $visitor->post($lineIndex);

@@ -27,7 +27,9 @@
  */
 
 
+
 namespace FJ;
+
 
 
 interface CSVisitor
@@ -35,12 +37,13 @@ interface CSVisitor
     /**
      * NOTE - "Main" method, called for each CSV line tokenized.
      *
-     * @param int      $lineIndex - Index of line, inclusive of all lines.
-     * @param string[] $tokens    - Array of strings.
+     * @param int        $lineIndex - Index of line, inclusive of all lines.
+     * @param string[]   $tokens    - Array of strings.
+     * @param array|bool $columns   - (false) if no column names; otherwise, array of columns names
      *
      * @return mixed
      */
-    function parse ( $lineIndex, $tokens );
+    function parse ( $lineIndex, $tokens, $columns = false );
 
 
     /**
