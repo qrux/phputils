@@ -42,6 +42,12 @@ abstract class CLI
     protected function argv () { return $this->argv; }
 
 
+    private $argIndex = 0;
+    function shift () { return $this->nextArg(); }
+    function nextArg () { return $this->remaining[$this->argIndex++]; }
+    function resetArgs () { $this->argIndex = 0; }
+
+
 
     public function __construct ()
     {
