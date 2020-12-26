@@ -372,10 +372,11 @@ class FJ
      * @param      $method
      * @param      $url
      * @param bool $data
+     * @param bool $debug - Only use if CharlesProxy is being used on localhost:8888
      *
      * @return string
      */
-    public static function callAPI ( $method, $url, $data = false )
+    public static function callAPI ( $method, $url, $data = false, $debug = false )
     {
         $curl = curl_init();
 
@@ -384,28 +385,100 @@ class FJ
             case "POST":
                 curl_setopt($curl, CURLOPT_POST, 1);
 
-                if ( $data )
+                if ( false !== $data )
+                {
                     curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
+                    if ( false !== $debug ) clog("POST data (as query string)", http_build_query($data));
+                }
                 break;
+
             case "PUT":
                 curl_setopt($curl, CURLOPT_PUT, 1);
                 break;
+
             default:
-                if ( $data )
+                if ( false !== $data )
+                {
+                    if ( false !== $debug ) clog("GET data (query string)", http_build_query($data));
                     $url = sprintf("%s?%s", $url, http_build_query($data));
+                }
         }
 
 //        // Optional Authentication:
 //        curl_setopt($curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
 //        curl_setopt($curl, CURLOPT_USERPWD, "username:password");
 
+        if ( false !== $debug ) clog("Hitting URL", $url);
+
         curl_setopt($curl, CURLOPT_URL, $url);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+
+        if ( false !== $debug )
+        {
+            curl_setopt($curl, CURLOPT_PROXY, 'http://localhost:8888/');
+            curl_setopt($curl, CURLOPT_VERBOSE, true);
+        }
 
         $result = curl_exec($curl);
 
         curl_close($curl);
 
         return trim($result);
+    }
+
+
+
+    private static function normalizeSimpleXML ( $obj, &$result )
+    {
+        $data = $obj;
+        if ( is_object($data) )
+        {
+            $data = get_object_vars($data);
+        }
+        if ( is_array($data) )
+        {
+            foreach ( $data as $key => $value )
+            {
+                $res = null;
+                self::normalizeSimpleXML($value, $res);
+                if ( ($key == '@attributes') && ($key) )
+                {
+                    $result = $res;
+                }
+                else
+                {
+                    $result[$key] = $res;
+                }
+            }
+        }
+        else
+        {
+            $result = $data;
+        }
+    }
+
+
+
+    /**
+     * Converts XML to JSON (ignoring attributes).
+     *
+     * @param $xml
+     *
+     * @return false|string
+     */
+    public static function xmlDecodeComplex ( $xml )
+    {
+        self::normalizeSimpleXML(simplexml_load_string($xml), $result);
+
+        return $result;
+
+        //return json_encode($result);
+    }
+
+
+    public static function xmlDecode ( $xml )
+    {
+        $object = simplexml_load_string($xml);
+        return @json_decode(@json_encode($object), 1);
     }
 }
