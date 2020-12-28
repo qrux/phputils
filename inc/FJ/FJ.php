@@ -62,9 +62,9 @@ class FJ
      * https://web.archive.org/web/20021223012947/http://www.crockford.com/wrmg/base32.html
      * https://www.php.net/manual/en/function.base-convert.php
      *
-     * @param $s string
+     * @param $s string - Input string (binary is fine).
      *
-     * @return string
+     * @return string - INPUT -> Base32[dc]
      */
     public static function enc ( $s )
     {
@@ -103,9 +103,9 @@ class FJ
      * https://web.archive.org/web/20021223012947/http://www.crockford.com/wrmg/base32.html
      * https://www.php.net/manual/en/function.base-convert.php
      *
-     * @param $s string
+     * @param $s string - Base32[dc]-encoded text
      *
-     * @return string
+     * @return string - Base32[dc] -> INPUT
      */
     public static function dec ( $s )
     {
