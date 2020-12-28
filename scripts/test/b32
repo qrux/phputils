@@ -1,0 +1,171 @@
+#! /usr/bin/php
+<?php
+/**
+ * Copyright (c) 2021 Troy Wu
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
+
+
+require_once(__DIR__ . "/../../inc/fj-autoloader.php");
+
+
+
+use \FJ\FJ;
+use function \FJ\clog;
+
+
+
+/**
+ * @param $argc
+ * @param $argv
+ *
+ * @return int
+ */
+function main ( $argc, $argv )
+{
+    // NOTE - The NIST test vector strings themselves are irrelevant.
+    //  I just chose these b/c I had easy access to them from a previous test.
+
+    $plainHex1 = "6bc1bee22e409f96e93d7e117393172a";
+    $plainHex2 = "ae2d8a571e03ac9c9eb76fac45af8e51";
+    $plainHex3 = "30c81c46a35ce411e5fbc1191a0a52ef";
+    $plainHex4 = "f69f2445df4f9b17ad2b417be66c3710";
+    $plainHex  = $plainHex1 . $plainHex2 . $plainHex3 . $plainHex4;
+    $plain     = hex2bin($plainHex);
+
+    $cipherHex1         = "601ec313775789a5b7a7f504bbf3d228";
+    $cipherHex2         = "f443e3ca4d62b59aca84e990cacaf5c5";
+    $cipherHex3         = "2b0930daa23de94ce87017ba2d84988d";
+    $cipherHex4         = "dfc9c58db67aada613c2dd08457941a6";
+    $cipherHex          = $cipherHex1 . $cipherHex2 . $cipherHex3 . $cipherHex4;
+    $expectedCiphertext = hex2bin($cipherHex);
+
+    $keyHex = "603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4";
+    $key    = hex2bin($keyHex);
+
+    $ctrHex = "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff";
+    $ctr    = hex2bin($ctrHex);
+
+    clog("        key (hex)", $keyHex);
+    clog("        ctr (hex)", $ctrHex);
+    clog("  plaintext (hex)", $plainHex);
+    clog(" ciphertext (hex)", $cipherHex);
+
+    $isok1  = test("plain", $plain, true);
+    $isok2  = test("cipher", $expectedCiphertext, true);
+    $isok3  = test("key", $key, true);
+    $isok4  = test("ctr", $ctr, true);
+    $isok5  = test("hw-12", "Hello, world");
+    $isok6  = test("hw-13", "Hello, world!");
+    $isok7  = test("hw-14", "Hello, world!!");
+    $isok8  = test("hw-15", "Hello, world!!!");
+    $isok9  = test("hw-16", "Hello, world!!!!");
+    $isok10 = test("hw-17", "Hello, world!!!!!");
+    $isok11 = test("hw-18", "Hello, world!!!!!!");
+    $isok12 = test("hw-19", "Hello, world!!!!!!!");
+    $isok13 = test("hw-20", "Hello, world!!!!!!!!");
+
+    $isok = $isok1 && $isok2 && $isok3 && $isok4 &&
+            $isok5 && $isok6 && $isok7 && $isok8 && $isok9 && $isok10 && $isok11 && $isok12 && $isok13;
+
+    return $isok ? 0 : 1;
+}
+
+
+
+/**
+ * Uses phpseclib directly.
+ *
+ * @param $mesg  string - Test description.
+ * @param $input string - Binary input input.
+ * @param $isBin boolean - (true) if input/recovered should be printed as hex.
+ *
+ * @return bool - (true) if (decoded === input); (false) otherwise.
+ */
+function test ( $mesg, $input, $isBin = false )
+{
+    $b32       = FJ::enc($input);
+    $recovered = FJ::dec($b32);
+
+    return verify($mesg, $input, $b32, $recovered, $isBin);
+}
+
+
+
+/**
+ * Checks results, prints output.
+ *
+ * @param $input          string - Binary string to encode.
+ * @param $b32            string - Base32 encoding.
+ * @param $recovered      string - Binary string decoded from encoding in '$input'.
+ * @param $isBin          boolean - (true) if input/recovered should be printed as hex.
+ *
+ * @return bool - (true) if (plain === recovered); (false) otherwise.
+ */
+function verify ( $mesg, $input, $b32, $recovered, $isBin = false )
+{
+    $inHex     = bin2hex($input);
+    $reHex     = bin2hex($recovered);
+    $isokEnDec = $isBin
+        ? (0 == strcmp($input, $recovered))
+        : (0 == strcmp($inHex, $reHex));
+
+    clog("$mesg - Base32[dc] encoding (raw)", $b32);
+
+    $in   = $isBin ? $inHex : $input;
+    $re   = $isBin ? $reHex : $recovered;
+    $type = $isBin ? "hex" : "bin";
+
+    $inLen = $isBin ? strlen($inHex) : strlen($in);
+    $reLen = $isBin ? strlen($reHex) : strlen($re);
+
+    clog("$mesg -      input/expected ($type, $inLen)", "[$in]");
+    clog("$mesg -           recovered ($type, $reLen)", "[$re]");
+    clog("$mesg - Worked?", $isokEnDec);
+
+    return $isokEnDec;
+}
+
+
+
+/*
+ * ########################################################################
+ * ########################################################################
+ * ########################################################################
+ * ########################################################################
+ * ########################################################################
+ *
+ * NOTE - CLI Entry Point!
+ *
+ * ########################################################################
+ * ########################################################################
+ * ########################################################################
+ * ########################################################################
+ * ########################################################################
+ */
+$ret = main($argc, $argv);
+
+exit($ret);

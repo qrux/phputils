@@ -49,6 +49,110 @@ class FJ
 
 
 
+    const DEBUG_B32_SUPER_VERBOSE = false;
+    const B32_ALPHABET            = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+    const B32_PAD                 = [ "00000", "0000", "000", "00", "0", "" ];
+
+    /**
+     * Encodes a string (binary) into Douglas Crockfords's Base32.
+     *
+     * https://en.wikipedia.org/wiki/Base32
+     * https://en.wikipedia.org/wiki/Base32#cite_note-2
+     * https://www.crockford.com/base32.html
+     * https://web.archive.org/web/20021223012947/http://www.crockford.com/wrmg/base32.html
+     * https://www.php.net/manual/en/function.base-convert.php
+     *
+     * @param $s string
+     *
+     * @return string
+     */
+    public static function enc ( $s )
+    {
+        list($t, $b, $r) = [ self::B32_ALPHABET, "", "" ];
+
+        foreach ( str_split($s) as $c )
+            $b = $b . sprintf("%08b", ord($c));
+
+        if ( self::DEBUG_B32_SUPER_VERBOSE ) clog("binary", $b);
+
+        $mod = strlen($b) % 5;
+
+        if ( self::DEBUG_B32_SUPER_VERBOSE ) clog("mod 5", $mod);
+
+        if ( 0 != $mod ) $b .= self::B32_PAD[$mod];
+
+        if ( self::DEBUG_B32_SUPER_VERBOSE ) clog("padded", $b);
+
+        foreach ( str_split($b, 5) as $c )
+        {
+            if ( self::DEBUG_B32_SUPER_VERBOSE ) clog("chunk", $c);
+            if ( self::DEBUG_B32_SUPER_VERBOSE ) clog("enc", $t[bindec($c)]);
+            $r = $r . $t[bindec($c)];
+        }
+
+        return ($r);
+
+    }
+
+    /**
+     * Decodes Douglas Crockfords's Base32 into a string (binary?).
+     *
+     * https://en.wikipedia.org/wiki/Base32
+     * https://en.wikipedia.org/wiki/Base32#cite_note-2
+     * https://www.crockford.com/base32.html
+     * https://web.archive.org/web/20021223012947/http://www.crockford.com/wrmg/base32.html
+     * https://www.php.net/manual/en/function.base-convert.php
+     *
+     * @param $s string
+     *
+     * @return string
+     */
+    public static function dec ( $s )
+    {
+        $s = strtoupper($s); // NOTE - This is important to later...
+
+        list($t, $b, $r) = [ self::B32_ALPHABET, "", "" ];
+
+        foreach ( str_split($s) as $c )
+        {
+            //
+            // NOTE - Everything here is uppercase (See line 1).
+            //
+            switch ( $c )
+            {
+                case "O": // English letter "O": n_O_p
+                    $c = 0;
+                    break;
+
+                case "I": // English letter "I": h_I_j
+                case "L": // English letter "L": k_L_m
+                    $c = 1;
+                    break;
+
+                case "-";
+                    continue 2; // https://www.php.net/manual/en/control-structures.continue.php
+
+                default:
+            }
+
+            if ( self::DEBUG_B32_SUPER_VERBOSE ) clog("dec", sprintf("%05b", strpos($t, $c)));
+
+            $b = $b . sprintf("%05b", strpos($t, $c));
+        }
+
+        foreach ( str_split($b, 8) as $c )
+        {
+            if ( strlen($c) != 8 ) break;
+            if ( self::DEBUG_B32_SUPER_VERBOSE ) clog("binary chunk", $c);
+            if ( self::DEBUG_B32_SUPER_VERBOSE ) clog(bindec($c), chr(bindec($c)));
+            $r = $r . chr(bindec($c));
+        }
+
+        return ($r);
+    }
+
+
+
     /**
      * ****************************************************************
      * Base64url-encodes the input.
