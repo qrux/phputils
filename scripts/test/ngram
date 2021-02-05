@@ -1,0 +1,102 @@
+#! /usr/bin/php
+<?php
+/**
+ * Copyright (c) 2014-2020 Troy Wu
+ * Copyright (c) 2021      Version2 OÜ
+ * All rights reserved.
+ *
+ * SHOULD THE COPYRIGHT HOLDERS GRANT PERMISSION TO USE THIS SOFTWARE,
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
+
+
+namespace FJ;
+
+
+
+use Exception;
+
+
+
+require_once(__DIR__ . "/../../inc/fj-autoloader.php");
+
+
+
+class NGramTester extends CLI
+{
+    /**
+     * This provides a list of the short options, in class getopts format.
+     *
+     * n: (n)-gram; e.g., a value of (3) would create 3-grams
+     * c: count of n-gram to filter
+     *
+     * @return string
+     */
+    protected function getShortOpts () { return "n:c:"; }
+
+
+
+    /**
+     * This provides an array of the long options.
+     *
+     * @return array
+     */
+    protected function getLongOpts () { return []; }
+
+
+
+    /**
+     * CLI entry point.
+     *
+     * @return int
+     *
+     * @throws Exception
+     */
+    public function main ()
+    {
+        $n = $this->hasopt("n") ? $this->getopt("n") : 1;
+        $c = $this->hasopt("c") ? $this->getopt("c") : 0;
+
+        $params = [
+            "ngramSize"  => $n,
+            "ngramCount" => $c,
+        ];
+
+        $file = $this->shift();
+
+        if ( !file_exists($file) || !is_file($file) || !is_readable($file) )
+        {
+            Log::error("File isn't readable; aborting.");
+            exit(1);
+        }
+
+        $data = file_get_contents($file);
+
+        $ng = new NGram($params);
+
+        $timer  = new AnalTime();
+        $ngrams = $ng->count($data);
+        $ms     = $timer->stop();
+
+        clog("Time to produce $n-grams", $ms . " ms");
+
+        clog("n-grams", $ngrams);
+
+        return 0;
+    }
+}
+
+
+
+NGramTester::run();

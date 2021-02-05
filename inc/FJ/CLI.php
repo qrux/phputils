@@ -1,4 +1,22 @@
 <?php
+/**
+ * Copyright (c) 2012-2020 Troy Wu
+ * Copyright (c) 2021      Version2 OÜ
+ * All rights reserved.
+ *
+ * SHOULD THE COPYRIGHT HOLDERS GRANT PERMISSION TO USE THIS SOFTWARE,
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 
 
 
@@ -6,28 +24,44 @@ namespace FJ;
 
 
 
+use Exception;
+
+
+
 abstract class CLI
 {
+    const DEBUG_ARGS  = false;
+    const DEBUG_CLASS = false;
+
+
+
+    static function req ( $string ) { return $string . ":"; }
+    static function opt ( $string ) { return $string . "::"; }
+
+
+
     private   $argc;
     private   $argv;
     protected $opts      = [];
     protected $remaining = [];
+    protected $optind    = 0;
+    private   $argIndex  = 0;
 
 
 
     /**
-     * This provides a list of the short options, in class getopts format.
+     * This provides a list of the short options, in classic getopts() format.
      *
-     * @return string
+     * @return string - Classic getopt() spec (with colons); empty string ok.
      */
-    protected function getShortOpts () { return ""; }
+    abstract protected function getShortOpts ();
 
     /**
-     * This provides an array of the long options.
+     * This provides an array of the long options, in getopts() format.
      *
-     * @return array
+     * @return array - getopt() spec (with colons); empty array is ok.
      */
-    protected function getLongOpts () { return []; }
+    abstract protected function getLongOpts ();
 
     /**
      * CLI entry point.
@@ -42,10 +76,21 @@ abstract class CLI
     protected function argv () { return $this->argv; }
 
 
-    private $argIndex = 0;
-    function shift () { return $this->nextArg(); }
-    function nextArg () { return $this->remaining[$this->argIndex++]; }
-    function resetArgs () { $this->argIndex = 0; }
+
+    /**
+     * @return string
+     * @throws Exception
+     */
+    function shift ()
+    {
+        if ( count($this->remaining) == $this->argIndex )
+            throw new Exception("No argv[{$this->argIndex}]");
+
+        return $this->remaining[$this->argIndex++];
+    }
+    function hasMoreArgs () { return $this->argIndex < count($this->remaining); }
+    function reset () { $this->argIndex = 0; }
+    function remaining () { return $this->remaining; }
 
 
 
@@ -54,6 +99,19 @@ abstract class CLI
         $this->argc = $_SERVER['argc'];
         $this->argv = $_SERVER['argv'];
 
+        $shortOpts = $this->getShortOpts();
+        $longOpts  = $this->getLongOpts();
+
+        $this->optind = 0;
+        $this->opts   = getopt($shortOpts, $longOpts, $this->optind);
+
+        $this->remaining = array_slice($this->argv, $this->optind);
+    }
+
+
+
+    public function dump ()
+    {
         clog($this->argc, $this->argv);
 
         $shortOpts = $this->getShortOpts();
@@ -62,13 +120,9 @@ abstract class CLI
         clog("short-opts", $shortOpts);
         clog(" long-opts", $longOpts);
 
-        $optind     = 0;
-        $this->opts = getopt($shortOpts, $longOpts, $optind);
-
         clog("options", $this->opts);
 
-        $this->remaining = array_slice($this->argv, $optind);
-        clog($optind, $this->remaining);
+        clog("optind (remaining): $this->optind", $this->remaining);
     }
 
 
@@ -90,7 +144,7 @@ abstract class CLI
     public static function run ()
     {
         $class = get_called_class();
-        // clog("get_called_class", $class);
+        if ( self::DEBUG_CLASS ) clog("get_called_class", $class);
 
         /** @var CLI $cli */
         $cli = new $class();

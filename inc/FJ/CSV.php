@@ -19,6 +19,7 @@
  */
 
 
+
 namespace FJ;
 
 
@@ -41,6 +42,11 @@ class CSV
     private $filepath;
     private $delim;
     private $columns;
+
+    /**
+     * @var bool|CSVResultHandler
+     */
+    private $resultHandler = false;
 
 
     public function __construct ( $filepath, $delim = self::CSV_DELIM_COMMA )
@@ -100,7 +106,7 @@ class CSV
     }
 
 
-    private function stripBOMHeader ( $tokens )
+    private static function stripBOMHeader ( $tokens )
     {
         if ( self::DEBUG_CSV_VERBOSE ) clog("stripBOMHeader tokens", $tokens);
 
@@ -143,14 +149,23 @@ class CSV
         return $tokens;
     }
 
+    /**
+     * @param $handler CSVResultHandler
+     */
+    public function setResultHandler ( $handler ) { if ( $handler ) $this->resultHandler = $handler; }
+
+
 
     /**
-     * @param $visitor CSVisitor - Visits each line in the CSV, tokenized by fgetcsv().
+     * @param $visitor       CSVisitor - Visits each line in the CSV, tokenized by fgetcsv().
+     * @param $hasHeaderLine bool - Does this file have a header line?
      *
      * @throws Exception
      */
-    public function read ( $visitor )
+    public function read ( $visitor, $hasHeaderLine = false )
     {
+        $hasResultHandler = false !== $this->resultHandler;
+
         $csv = fopen($this->filepath, "r");
 
         if ( false === $csv )
@@ -159,7 +174,14 @@ class CSV
             throw new Exception("CSV could not open {$csv}.");
         }
 
-        clog("about to read file...");
+        clog("Reading CSV file", $this->filepath);
+
+        if ( $hasHeaderLine )
+        {
+            $firstLineTokens = fgetcsv($csv); // Assume first line has column names
+            $this->columns   = self::stripBOMHeader($firstLineTokens); // Excel bullshit.
+            clog("columns", $this->columns);
+        }
 
         $lineIndex = -1;
 
@@ -171,69 +193,23 @@ class CSV
 
             $visitor->ante($lineIndex);
 
-            $tokens = $this->stripBOMHeader($tokens);
-
-            if ( self::DEBUG_CSV_VERBOSE ) clog("after BOM-strip", $tokens);
+            //$tokens = self::stripBOMHeader($tokens); // NOTE - stripping BOM headers on EVERY LINE???
+            //if ( self::DEBUG_CSV_VERBOSE ) clog("after BOM-strip", $tokens);
 
             if ( $this->isCommentLine($tokens) )
             {
                 if ( self::DEBUG_CSV_VERBOSE ) cclog(TEXT_COLOR_UL_YELLOW, "Skipping line: " . implode(",", $tokens));
                 $visitor->parseComment($lineIndex, $tokens);
+                $result = false;
             }
             else
             {
-                $visitor->parse($lineIndex, $tokens);
+                $result = $visitor->parse($lineIndex, $tokens, $this->columns);
             }
 
             $visitor->post($lineIndex);
-        }
 
-        fclose($csv);
-
-        $visitor->finish();
-    }
-
-
-
-    /**
-     * @param $visitor CSVisitor - Visits each line in the CSV, tokenized by fgetcsv().
-     *
-     * @throws Exception
-     */
-    public function readWithHeaderRow ( $visitor )
-    {
-        $csv = fopen($this->filepath, "r");
-
-        if ( false === $csv )
-        {
-            clog("File {$csv} could not be opened for reading; aborting.");
-            throw new Exception("CSV could not open {$csv}.");
-        }
-
-        clog("about to read file...");
-
-
-        $firstLineTokens = fgetcsv($csv); // Assume first line has column names
-        $this->columns   = $this->stripBOMHeader($firstLineTokens); // Excel bullshit.
-
-        $lineIndex = -1;
-
-        while ( false !== ($tokens = fgetcsv($csv, 0, $this->delim)) )
-        {
-            ++$lineIndex;
-
-            $visitor->ante($lineIndex);
-
-            if ( $this->isCommentLine($tokens) )
-            {
-                $visitor->parseComment($lineIndex, $tokens);
-            }
-            else
-            {
-                $visitor->parse($lineIndex, $tokens, $this->columns);
-            }
-
-            $visitor->post($lineIndex);
+            if ( $hasResultHandler && false !== $result ) $this->resultHandler->handleResult($lineIndex, $result);
         }
 
         fclose($csv);

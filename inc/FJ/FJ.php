@@ -41,110 +41,6 @@ class FJ
 
 
 
-    const DEBUG_B32_SUPER_VERBOSE = false;
-    const B32_ALPHABET            = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-    const B32_PAD                 = [ "00000", "0000", "000", "00", "0", "" ];
-
-    /**
-     * Encodes a string (binary) into Douglas Crockfords's Base32.
-     *
-     * https://en.wikipedia.org/wiki/Base32
-     * https://en.wikipedia.org/wiki/Base32#cite_note-2
-     * https://www.crockford.com/base32.html
-     * https://web.archive.org/web/20021223012947/http://www.crockford.com/wrmg/base32.html
-     * https://www.php.net/manual/en/function.base-convert.php
-     *
-     * @param $s string - Input string (binary is fine).
-     *
-     * @return string - INPUT -> Base32[dc]
-     */
-    public static function enc ( $s )
-    {
-        list($t, $b, $r) = [ self::B32_ALPHABET, "", "" ];
-
-        foreach ( str_split($s) as $c )
-            $b = $b . sprintf("%08b", ord($c));
-
-        if ( self::DEBUG_B32_SUPER_VERBOSE ) clog("binary", $b);
-
-        $mod = strlen($b) % 5;
-
-        if ( self::DEBUG_B32_SUPER_VERBOSE ) clog("mod 5", $mod);
-
-        if ( 0 != $mod ) $b .= self::B32_PAD[$mod];
-
-        if ( self::DEBUG_B32_SUPER_VERBOSE ) clog("padded", $b);
-
-        foreach ( str_split($b, 5) as $c )
-        {
-            if ( self::DEBUG_B32_SUPER_VERBOSE ) clog("chunk", $c);
-            if ( self::DEBUG_B32_SUPER_VERBOSE ) clog("enc", $t[bindec($c)]);
-            $r = $r . $t[bindec($c)];
-        }
-
-        return ($r);
-
-    }
-
-    /**
-     * Decodes Douglas Crockfords's Base32 into a string (binary?).
-     *
-     * https://en.wikipedia.org/wiki/Base32
-     * https://en.wikipedia.org/wiki/Base32#cite_note-2
-     * https://www.crockford.com/base32.html
-     * https://web.archive.org/web/20021223012947/http://www.crockford.com/wrmg/base32.html
-     * https://www.php.net/manual/en/function.base-convert.php
-     *
-     * @param $s string - Base32[dc]-encoded text
-     *
-     * @return string - Base32[dc] -> INPUT
-     */
-    public static function dec ( $s )
-    {
-        $s = strtoupper($s); // NOTE - This is important to later...
-
-        list($t, $b, $r) = [ self::B32_ALPHABET, "", "" ];
-
-        foreach ( str_split($s) as $c )
-        {
-            //
-            // NOTE - Everything here is uppercase (See line 1).
-            //
-            switch ( $c )
-            {
-                case "O": // English letter "O": n_O_p
-                    $c = 0;
-                    break;
-
-                case "I": // English letter "I": h_I_j
-                case "L": // English letter "L": k_L_m
-                    $c = 1;
-                    break;
-
-                case "-";
-                    continue 2; // https://www.php.net/manual/en/control-structures.continue.php
-
-                default:
-            }
-
-            if ( self::DEBUG_B32_SUPER_VERBOSE ) clog("dec", sprintf("%05b", strpos($t, $c)));
-
-            $b = $b . sprintf("%05b", strpos($t, $c));
-        }
-
-        foreach ( str_split($b, 8) as $c )
-        {
-            if ( strlen($c) != 8 ) break;
-            if ( self::DEBUG_B32_SUPER_VERBOSE ) clog("binary chunk", $c);
-            if ( self::DEBUG_B32_SUPER_VERBOSE ) clog(bindec($c), chr(bindec($c)));
-            $r = $r . chr(bindec($c));
-        }
-
-        return ($r);
-    }
-
-
-
     /**
      * ****************************************************************
      * Base64url-encodes the input.
@@ -251,6 +147,14 @@ class FJ
 
 
 
+    public static function hashFile ( $path, $substrLen = 0, $algo = "SHA256" )
+    {
+        $hash = hash_file($algo, $path);
+        return (0 < $substrLen) ? substr($hash, 0, $substrLen) : $hash;
+    }
+
+
+
     public static function encrypt ( $key, $iv, $plaintext )
     {
         $aes = new AES(self::FJ_DEFAULT_AES_MODE);
@@ -271,9 +175,25 @@ class FJ
 
 
 
-    public static function endsWith ( $needle, $haystack )
+    public static function in_array_sorted ( $needle, $haystack )
     {
-        $len = strlen($needle);
+        $top = count($haystack) - 1;
+        $bot = 0;
+        while ( $top >= $bot )
+        {
+            $p = ($top + $bot) >> 1;
+            if ( $haystack[$p] < $needle ) $bot = $p + 1;
+            elseif ( $haystack[$p] > $needle ) $top = $p - 1;
+            else return true;
+        }
+        return false;
+    }
+
+
+
+    public static function endsWith ( $needle, $haystack, $len = false )
+    {
+        if ( false === $len ) $len = strlen($needle);
         if ( 0 == $len ) return true;
 
         return $needle === substr($haystack, -$len);
@@ -281,10 +201,31 @@ class FJ
 
 
 
-    public static function startsWith ( $needle, $haystack )
+    public static function startsWith ( $needle, $haystack, $len = false )
     {
-        $len = strlen($needle);
+        if ( false === $len ) $len = strlen($needle);
         return $needle === substr($haystack, 0, $len);
+    }
+
+
+
+    public static function stripExtension ( $filename )
+    {
+        $extWithPeriod = strrchr($filename, ".");
+        $extlen        = strlen($extWithPeriod);
+        $hasPeriod     = 0 < $extlen;
+        $namelen       = strlen($filename) - $extlen;
+        $name          = $hasPeriod ? substr($filename, 0, $namelen) : $filename;
+
+        return $name;
+    }
+
+
+
+    public static function stripExtensionAndDir ( $filepath )
+    {
+        $basename = basename($filepath);
+        return self::stripExtension($basename);
     }
 
 
@@ -314,7 +255,7 @@ class FJ
      *
      * @return string - Either a clipped string 'ab...yz' or the original string.
      */
-    public static function clipString ( $string, $len, $delimiter = "...->..." )
+    public static function clipString ( $string, $len, $delimiter = " )->( " )
     {
         $l = strlen($string);
         if ( $l < $len ) return $string;
@@ -460,6 +401,90 @@ class FJ
 
 
 
+    /**
+     * @param string     $method
+     * @param string     $url
+     * @param bool|array $data
+     * @param bool|array $params
+     *
+     * @return string - raw (textual) HTTP response
+     */
+    public static function callAPI ( $method, $url, $data = false, $params = false )
+    {
+        $debug        = self::getParam("debug", $params);
+        $debugVerbose = self::getParam("debugVerbose", $params);
+        $user         = self::getParam("user", $params);
+        $pass         = self::getParam("pass", $params);
+        $debugProxy   = self::getParam("debugProxy", $params);
+        $debugPort    = self::getParam("debugPort", $params);
+        $debugHost    = self::getParam("debugHost", $params);
+
+        $curl = curl_init();
+
+        switch ( $method )
+        {
+            case "POST":
+                curl_setopt($curl, CURLOPT_POST, 1);
+
+                if ( false !== $data )
+                {
+                    curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
+                    if ( false !== $debugVerbose ) clog("POST data (as query string)", http_build_query($data));
+                }
+                break;
+
+            case "PUT":
+                curl_setopt($curl, CURLOPT_PUT, 1);
+                break;
+
+            default:
+                if ( false !== $data )
+                {
+                    if ( false !== $debugVerbose ) clog("GET data (query string)", http_build_query($data));
+                    $url = sprintf("%s?%s", $url, http_build_query($data));
+                }
+        }
+
+        if ( false !== $pass && false !== $user )
+        {
+            // Optional Authentication:
+            curl_setopt($curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+            curl_setopt($curl, CURLOPT_USERPWD, "$user:$pass");
+        }
+
+        if ( false !== $debug ) clog("Hitting URL", $url);
+        if ( false !== $debugVerbose ) curl_setopt($curl, CURLOPT_VERBOSE, true);
+
+        curl_setopt($curl, CURLOPT_URL, $url);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+
+        if ( false !== $debugProxy )
+        {
+            //
+            // Defaults set to Charles Debugging, locally.
+            //
+            $port = false === $debugPort ? 8888 : $debugPort;
+            $host = false === $debugHost ? "localhost" : $debugHost;
+
+            curl_setopt($curl, CURLOPT_PROXY, "http://$host:$port/");
+        }
+
+        $result = curl_exec($curl);
+
+        curl_close($curl);
+
+        return trim($result);
+    }
+
+
+
+    static function getParam ( $needle, $haystack )
+    {
+        if ( false === $haystack || !$haystack ) return false;
+        return array_key_exists($needle, $haystack) ? $haystack[$needle] : false;
+    }
+
+
 
     /**
      * Method: POST, PUT, GET etc
@@ -472,7 +497,7 @@ class FJ
      *
      * @return string
      */
-    public static function callAPI ( $method, $url, $data = false, $debug = false )
+    public static function _callAPI ( $method, $url, $data = false, $debug = false )
     {
         $curl = curl_init();
 
