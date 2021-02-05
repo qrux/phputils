@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (c) 2012-2020 Troy Wu
+ * Copyright (c) 2012-2021 Troy Wu
  * Copyright (c) 2021      Version2 OÜ
  * All rights reserved.
  *
@@ -17,6 +17,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
 
 
 namespace FJ;
